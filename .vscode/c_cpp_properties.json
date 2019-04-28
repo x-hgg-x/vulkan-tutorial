@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "/usr/local/include",
+                "/usr/include",
+                "/usr/include/x86_64-linux-gnu",
+                "/usr/include/c++/7",
+                "/usr/include/c++/7/backward",
+                "/usr/include/x86_64-linux-gnu/c++/7",
+                "/usr/lib/gcc/x86_64-linux-gnu/7/include",
+                "/usr/lib/gcc/x86_64-linux-gnu/7/include-fixed",
+                "${workspaceFolder}/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-x64"
+        }
+    ],
+    "version": 4
+}
