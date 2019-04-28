@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(glfw3 REQUIRED)
 find_package(Vulkan REQUIRED)
 
-set(SOURCES	main.cpp)
+set(SOURCES main.cpp)
 
 add_executable(vktest ${SOURCES})
 target_link_libraries(vktest glfw Vulkan::Vulkan)
