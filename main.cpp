@@ -69,6 +69,7 @@ class HelloTriangleApplication
 
     vk::RenderPass renderPass;
     vk::PipelineLayout pipelineLayout;
+    std::vector<vk::Pipeline> graphicsPipelines;
 
     void initWindow()
     {
@@ -105,6 +106,10 @@ class HelloTriangleApplication
 
     void cleanup()
     {
+        for (auto graphicsPipeline : graphicsPipelines) {
+            device.destroy(graphicsPipeline, nullptr);
+        }
+
         device.destroy(pipelineLayout, nullptr);
         device.destroy(renderPass, nullptr);
 
@@ -154,6 +159,8 @@ class HelloTriangleApplication
         // vk::PipelineRasterizationStateCreateInfo(flags_, depthClampEnable_, rasterizerDiscardEnable_, polygonMode_, cullMode_, frontFace_, depthBiasEnable_, depthBiasConstantFactor_, depthBiasClamp_, depthBiasSlopeFactor_, lineWidth_)
         auto rasterizer = vk::PipelineRasterizationStateCreateInfo({}, VK_FALSE, VK_FALSE, vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack, vk::FrontFace::eClockwise, VK_FALSE, 0, 0, 0, 1);
 
+        auto multisampling = vk::PipelineMultisampleStateCreateInfo();
+
         // vk::PipelineColorBlendAttachmentState(blendEnable_, srcColorBlendFactor_, dstColorBlendFactor_, colorBlendOp_, srcAlphaBlendFactor_, dstAlphaBlendFactor_, alphaBlendOp_, colorWriteMask_)
         auto colorBlendAttachment = vk::PipelineColorBlendAttachmentState(VK_FALSE,
                                                                           vk::BlendFactor::eOne, vk::BlendFactor::eZero, vk::BlendOp::eAdd,
@@ -164,6 +171,26 @@ class HelloTriangleApplication
         auto colorBlending = vk::PipelineColorBlendStateCreateInfo({}, VK_FALSE, vk::LogicOp::eCopy, 1, &colorBlendAttachment, {0, 0, 0, 0});
 
         pipelineLayout = device.createPipelineLayout({}, nullptr);
+
+        auto pipelineInfo = vk::GraphicsPipelineCreateInfo({},               // flags_
+                                                           2,                // stageCount_
+                                                           shaderStages,     // pStages_
+                                                           &vertexInputInfo, // pVertexInputState_
+                                                           &inputAssembly,   // pInputAssemblyState_
+                                                           nullptr,          // pTessellationState_
+                                                           &viewportState,   // pViewportState_
+                                                           &rasterizer,      // pRasterizationState_
+                                                           &multisampling,   // pMultisampleState_
+                                                           nullptr,          // pDepthStencilState_
+                                                           &colorBlending,   // pColorBlendState_
+                                                           nullptr,          // pDynamicState_
+                                                           pipelineLayout,   // layout_
+                                                           renderPass,       // renderPass_
+                                                           0,                // subpass_
+                                                           nullptr,          // basePipelineHandle_
+                                                           -1);              // basePipelineIndex_
+
+        graphicsPipelines = device.createGraphicsPipelines(vk::PipelineCache(), pipelineInfo, nullptr);
 
         device.destroy(vertShaderModule, nullptr);
         device.destroy(fragShaderModule, nullptr);
