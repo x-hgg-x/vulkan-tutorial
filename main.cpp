@@ -67,6 +67,7 @@ class HelloTriangleApplication
     std::vector<vk::Image> swapChainImages;
     std::vector<vk::ImageView> swapChainImageViews;
 
+    vk::RenderPass renderPass;
     vk::PipelineLayout pipelineLayout;
 
     void initWindow()
@@ -88,6 +89,7 @@ class HelloTriangleApplication
         createLogicalDevice();
         createSwapChain();
         createImageViews();
+        createRenderPass();
         createGraphicsPipeline();
     }
 
@@ -104,6 +106,7 @@ class HelloTriangleApplication
     void cleanup()
     {
         device.destroy(pipelineLayout, nullptr);
+        device.destroy(renderPass, nullptr);
 
         for (auto imageView : swapChainImageViews) {
             device.destroy(imageView, nullptr);
@@ -185,6 +188,25 @@ class HelloTriangleApplication
         // vk::ShaderModuleCreateInfo(flags_, codeSize_, pCode_)
         auto createInfo = vk::ShaderModuleCreateInfo({}, code.size(), reinterpret_cast<const uint32_t *>(code.data()));
         return device.createShaderModule(createInfo, nullptr);
+    }
+
+    void createRenderPass()
+    {
+        // vk::AttachmentDescription(flags_, format_, samples_, loadOp_, storeOp_, stencilLoadOp_, stencilStoreOp_, initialLayout_, finalLayout_)
+        auto colorAttachment = vk::AttachmentDescription({}, swapChainImageFormat, vk::SampleCountFlagBits::e1,
+                                                         vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eStore,
+                                                         vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare,
+                                                         vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR);
+
+        // vk::AttachmentReference(attachment_, layout_)
+        auto colorAttachmentRef = vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal);
+
+        // vk::SubpassDescription(flags_, pipelineBindPoint_, inputAttachmentCount_, pInputAttachments_, colorAttachmentCount_, pColorAttachments_, pResolveAttachments_, pDepthStencilAttachment_, preserveAttachmentCount_, pPreserveAttachments_)
+        auto subpass = vk::SubpassDescription({}, vk::PipelineBindPoint::eGraphics, 0, nullptr, 1, &colorAttachmentRef, nullptr, nullptr, 0, nullptr);
+
+        // vk::RenderPassCreateInfo(flags_, attachmentCount_, pAttachments_, subpassCount_, pSubpasses_, dependencyCount_, pDependencies_)
+        auto renderPassInfo = vk::RenderPassCreateInfo({}, 1, &colorAttachment, 1, &subpass, 0, nullptr);
+        renderPass = device.createRenderPass(renderPassInfo, nullptr);
     }
 
     void createImageViews()
