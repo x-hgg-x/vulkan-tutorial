@@ -72,6 +72,9 @@ class HelloTriangleApplication
     vk::PipelineLayout pipelineLayout;
     std::vector<vk::Pipeline> graphicsPipelines;
 
+    vk::CommandPool commandPool;
+    std::vector<vk::CommandBuffer> commandBuffers;
+
     void initWindow()
     {
         glfwInit();
@@ -94,6 +97,8 @@ class HelloTriangleApplication
         createRenderPass();
         createGraphicsPipeline();
         createFramebuffers();
+        createCommandPool();
+        createCommandBuffers();
     }
 
     void mainLoop()
@@ -108,6 +113,8 @@ class HelloTriangleApplication
 
     void cleanup()
     {
+        device.destroy(commandPool, nullptr);
+
         for (auto framebuffer : swapChainFramebuffers) {
             device.destroy(framebuffer, nullptr);
         }
@@ -134,6 +141,36 @@ class HelloTriangleApplication
         instance.destroy(nullptr);
         glfwDestroyWindow(window);
         glfwTerminate();
+    }
+
+    void createCommandBuffers()
+    {
+        // vk::CommandBufferAllocateInfo(commandPool_, level_, commandBufferCount_)
+        auto allocInfo = vk::CommandBufferAllocateInfo(commandPool, vk::CommandBufferLevel::ePrimary, swapChainFramebuffers.size());
+        commandBuffers = device.allocateCommandBuffers(allocInfo);
+
+        for (size_t i = 0; i < commandBuffers.size(); i++) {
+            // vk::CommandBufferBeginInfo(flags_, pInheritanceInfo_)
+            auto beginInfo = vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse, nullptr);
+            commandBuffers[i].begin(beginInfo);
+
+            auto clearColor = vk::ClearValue(std::array{0.0f, 0.0f, 0.0f, 1.0f});
+
+            // vk::RenderPassBeginInfo(renderPass_, framebuffer_, renderArea_, clearValueCount_, pClearValues_)
+            auto renderPassInfo = vk::RenderPassBeginInfo(renderPass, swapChainFramebuffers[i], {{0, 0}, swapChainExtent}, 1, &clearColor);
+            commandBuffers[i].beginRenderPass(&renderPassInfo, vk::SubpassContents::eInline);
+            commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipelines[0]);
+            commandBuffers[i].draw(3, 1, 0, 0);
+            commandBuffers[i].endRenderPass();
+            commandBuffers[i].end();
+        }
+    }
+
+    void createCommandPool()
+    {
+        // vk::CommandPoolCreateInfo(flags_, queueFamilyIndex_)
+        auto poolInfo = vk::CommandPoolCreateInfo({}, findQueueFamilies(physicalDevice).graphicsFamily.value());
+        commandPool = device.createCommandPool(poolInfo, nullptr);
     }
 
     void createFramebuffers()
@@ -364,7 +401,7 @@ class HelloTriangleApplication
         }
 
         // vk::DeviceCreateInfo(flags_, queueCreateInfoCount_, pQueueCreateInfos_, enabledLayerCount_, ppEnabledLayerNames, enabledExtensionCount_, ppEnabledExtensionNames_, pEnabledFeatures_)
-        auto createInfo = vk::DeviceCreateInfo({}, static_cast<uint32_t>(queueCreateInfos.size()), queueCreateInfos.data(), 0, nullptr, static_cast<uint32_t>(deviceExtensions.size()), deviceExtensions.data(), nullptr);
+        auto createInfo = vk::DeviceCreateInfo({}, queueCreateInfos.size(), queueCreateInfos.data(), 0, nullptr, deviceExtensions.size(), deviceExtensions.data(), nullptr);
 
         device = physicalDevice.createDevice(createInfo, nullptr);
         graphicsQueue = device.getQueue(indices.graphicsFamily.value(), 0);
@@ -466,7 +503,7 @@ class HelloTriangleApplication
         uint32_t enabledLayerCount;
         const char *const *ppEnabledLayerNames;
         if (enableValidationLayers) {
-            enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+            enabledLayerCount = validationLayers.size();
             ppEnabledLayerNames = validationLayers.data();
         } else {
             enabledLayerCount = 0;
@@ -474,7 +511,7 @@ class HelloTriangleApplication
         }
 
         auto extensions = getRequiredExtensions();
-        uint32_t enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+        uint32_t enabledExtensionCount = extensions.size();
         auto ppEnabledExtensionNames = extensions.data();
 
         // vk::InstanceCreateInfo(flags_, pApplicationInfo_, enabledLayerCount_, ppEnabledLayerNames_, enabledExtensionCount_, ppEnabledExtensionNames_)
