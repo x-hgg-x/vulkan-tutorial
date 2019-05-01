@@ -67,6 +67,8 @@ class HelloTriangleApplication
     std::vector<vk::Image> swapChainImages;
     std::vector<vk::ImageView> swapChainImageViews;
 
+    vk::PipelineLayout pipelineLayout;
+
     void initWindow()
     {
         glfwInit();
@@ -101,6 +103,8 @@ class HelloTriangleApplication
 
     void cleanup()
     {
+        device.destroy(pipelineLayout, nullptr);
+
         for (auto imageView : swapChainImageViews) {
             device.destroy(imageView, nullptr);
         }
@@ -129,8 +133,34 @@ class HelloTriangleApplication
         // vk::PipelineShaderStageCreateInfo(flags_, stage_, module_, pName_, pSpecializationInfo_)
         auto vertShaderStageInfo = vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, vertShaderModule, "main", nullptr);
         auto fragShaderStageInfo = vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, fragShaderModule, "main", nullptr);
-
         vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+        // vk::PipelineVertexInputStateCreateInfo(flags_, vertexBindingDescriptionCount_, pVertexBindingDescriptions_, vertexAttributeDescriptionCount_, pVertexAttributeDescriptions_)
+        auto vertexInputInfo = vk::PipelineVertexInputStateCreateInfo({}, 0, nullptr, 0, nullptr);
+
+        // vk::PipelineInputAssemblyStateCreateInfo(flags_, topology_, primitiveRestartEnable_)
+        auto inputAssembly = vk::PipelineInputAssemblyStateCreateInfo({}, vk::PrimitiveTopology::eTriangleList, VK_FALSE);
+
+        // vk::Viewport(x_, y_, width_, height_, minDepth_, maxDepth_)
+        auto viewport = vk::Viewport(0, 0, swapChainExtent.width, swapChainExtent.height, 0, 1);
+        // vk::Rect2D(vk::Offset2D(x_, y_), extent_)
+        auto scissor = vk::Rect2D({0, 0}, swapChainExtent);
+        // vk::PipelineViewportStateCreateInfo(flags_, viewportCount_, pViewports_, scissorCount_, pScissors_)
+        auto viewportState = vk::PipelineViewportStateCreateInfo({}, 1, &viewport, 1, &scissor);
+
+        // vk::PipelineRasterizationStateCreateInfo(flags_, depthClampEnable_, rasterizerDiscardEnable_, polygonMode_, cullMode_, frontFace_, depthBiasEnable_, depthBiasConstantFactor_, depthBiasClamp_, depthBiasSlopeFactor_, lineWidth_)
+        auto rasterizer = vk::PipelineRasterizationStateCreateInfo({}, VK_FALSE, VK_FALSE, vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack, vk::FrontFace::eClockwise, VK_FALSE, 0, 0, 0, 1);
+
+        // vk::PipelineColorBlendAttachmentState(blendEnable_, srcColorBlendFactor_, dstColorBlendFactor_, colorBlendOp_, srcAlphaBlendFactor_, dstAlphaBlendFactor_, alphaBlendOp_, colorWriteMask_)
+        auto colorBlendAttachment = vk::PipelineColorBlendAttachmentState(VK_FALSE,
+                                                                          vk::BlendFactor::eOne, vk::BlendFactor::eZero, vk::BlendOp::eAdd,
+                                                                          vk::BlendFactor::eOne, vk::BlendFactor::eZero, vk::BlendOp::eAdd,
+                                                                          vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
+
+        // vk::PipelineColorBlendStateCreateInfo(flags_, logicOpEnable_, logicOp_, attachmentCount_, pAttachments_, blendConstants_)
+        auto colorBlending = vk::PipelineColorBlendStateCreateInfo({}, VK_FALSE, vk::LogicOp::eCopy, 1, &colorBlendAttachment, {0, 0, 0, 0});
+
+        pipelineLayout = device.createPipelineLayout({}, nullptr);
 
         device.destroy(vertShaderModule, nullptr);
         device.destroy(fragShaderModule, nullptr);
