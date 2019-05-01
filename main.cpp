@@ -66,6 +66,7 @@ class HelloTriangleApplication
     vk::Extent2D swapChainExtent;
     std::vector<vk::Image> swapChainImages;
     std::vector<vk::ImageView> swapChainImageViews;
+    std::vector<vk::Framebuffer> swapChainFramebuffers;
 
     vk::RenderPass renderPass;
     vk::PipelineLayout pipelineLayout;
@@ -92,6 +93,7 @@ class HelloTriangleApplication
         createImageViews();
         createRenderPass();
         createGraphicsPipeline();
+        createFramebuffers();
     }
 
     void mainLoop()
@@ -106,6 +108,10 @@ class HelloTriangleApplication
 
     void cleanup()
     {
+        for (auto framebuffer : swapChainFramebuffers) {
+            device.destroy(framebuffer, nullptr);
+        }
+
         for (auto graphicsPipeline : graphicsPipelines) {
             device.destroy(graphicsPipeline, nullptr);
         }
@@ -128,6 +134,17 @@ class HelloTriangleApplication
         instance.destroy(nullptr);
         glfwDestroyWindow(window);
         glfwTerminate();
+    }
+
+    void createFramebuffers()
+    {
+        swapChainFramebuffers.resize(swapChainImageViews.size());
+
+        for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+            // vk::FramebufferCreateInfo(flags_, renderPass_, attachmentCount_, pAttachments_, width_, height_, layers_)
+            auto framebufferInfo = vk::FramebufferCreateInfo({}, renderPass, 1, &swapChainImageViews[i], swapChainExtent.width, swapChainExtent.height, 1);
+            swapChainFramebuffers[i] = device.createFramebuffer(framebufferInfo, nullptr);
+        }
     }
 
     void createGraphicsPipeline()
