@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <optional>
@@ -85,6 +86,7 @@ class HelloTriangleApplication
         createLogicalDevice();
         createSwapChain();
         createImageViews();
+        createGraphicsPipeline();
     }
 
     void mainLoop()
@@ -114,6 +116,45 @@ class HelloTriangleApplication
         instance.destroy(nullptr);
         glfwDestroyWindow(window);
         glfwTerminate();
+    }
+
+    void createGraphicsPipeline()
+    {
+        auto vertShaderCode = readFile("shaders/shader.vert.spv");
+        auto fragShaderCode = readFile("shaders/shader.frag.spv");
+
+        vk::ShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+        vk::ShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+
+        // vk::PipelineShaderStageCreateInfo(flags_, stage_, module_, pName_, pSpecializationInfo_)
+        auto vertShaderStageInfo = vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, vertShaderModule, "main", nullptr);
+        auto fragShaderStageInfo = vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, fragShaderModule, "main", nullptr);
+
+        vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+        device.destroy(vertShaderModule, nullptr);
+        device.destroy(fragShaderModule, nullptr);
+    }
+
+    std::vector<char> readFile(const std::string &filename)
+    {
+        std::ifstream file(filename, std::ios::ate | std::ios::binary);
+        if (!file.is_open()) {
+            throw std::runtime_error(std::string("failed to open '") + filename + "'!");
+        }
+
+        std::vector<char> buffer(file.tellg());
+        file.seekg(0);
+        file.read(buffer.data(), buffer.size());
+        file.close();
+        return buffer;
+    }
+
+    vk::ShaderModule createShaderModule(const std::vector<char> &code)
+    {
+        // vk::ShaderModuleCreateInfo(flags_, codeSize_, pCode_)
+        auto createInfo = vk::ShaderModuleCreateInfo({}, code.size(), reinterpret_cast<const uint32_t *>(code.data()));
+        return device.createShaderModule(createInfo, nullptr);
     }
 
     void createImageViews()
@@ -320,7 +361,7 @@ class HelloTriangleApplication
     void createInstance()
     {
         // vk::ApplicationInfo(pApplicationName_, applicationVersion_, pEngineName_, engineVersion_, apiVersion_)
-        auto appInfo = vk::ApplicationInfo("Hello Triangle", VK_MAKE_VERSION(1, 0, 0), "No Engine", VK_MAKE_VERSION(1, 0, 0), VK_API_VERSION_1_0);
+        auto appInfo = vk::ApplicationInfo("Hello Triangle", VK_MAKE_VERSION(1, 0, 0), "No Engine", VK_MAKE_VERSION(1, 0, 0), VK_API_VERSION_1_1);
 
         if (enableValidationLayers && !checkValidationLayerSupport()) {
             throw std::runtime_error("validation layers requested, but not available!");
