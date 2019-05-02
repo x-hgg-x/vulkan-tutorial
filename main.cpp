@@ -14,6 +14,8 @@
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
+const int MAX_FRAMES_IN_FLIGHT = 1;
+
 const std::vector<const char *> validationLayers = {"VK_LAYER_LUNARG_standard_validation"};
 const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
@@ -75,6 +77,11 @@ class HelloTriangleApplication
     vk::CommandPool commandPool;
     std::vector<vk::CommandBuffer> commandBuffers;
 
+    std::vector<vk::Semaphore> imageAvailableSemaphores;
+    std::vector<vk::Semaphore> renderFinishedSemaphores;
+    std::vector<VkFence> inFlightFences;
+    size_t currentFrame = 0;
+
     void initWindow()
     {
         glfwInit();
@@ -99,6 +106,7 @@ class HelloTriangleApplication
         createFramebuffers();
         createCommandPool();
         createCommandBuffers();
+        createSyncObjects();
     }
 
     void mainLoop()
@@ -108,11 +116,20 @@ class HelloTriangleApplication
                 glfwSetWindowShouldClose(window, true);
             }
             glfwPollEvents();
+            drawFrame();
         }
+
+        device.waitIdle();
     }
 
     void cleanup()
     {
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            device.destroy(imageAvailableSemaphores[i], nullptr);
+            device.destroy(renderFinishedSemaphores[i], nullptr);
+            device.destroy(inFlightFences[i], nullptr);
+        }
+
         device.destroy(commandPool, nullptr);
 
         for (auto framebuffer : swapChainFramebuffers) {
@@ -141,6 +158,38 @@ class HelloTriangleApplication
         instance.destroy(nullptr);
         glfwDestroyWindow(window);
         glfwTerminate();
+    }
+
+    void drawFrame()
+    {
+        device.waitForFences({inFlightFences[currentFrame]}, VK_TRUE, std::numeric_limits<uint64_t>::max());
+        device.resetFences({inFlightFences[currentFrame]});
+
+        uint32_t imageIndex = device.acquireNextImageKHR(swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphores[currentFrame], {}).value;
+
+        vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+
+        // vk::SubmitInfo(waitSemaphoreCount_ pWaitSemaphores_, pWaitDstStageMask_, commandBufferCount_, pCommandBuffers_, signalSemaphoreCount_, pSignalSemaphores_)
+        auto submitInfo = vk::SubmitInfo(1, &imageAvailableSemaphores[currentFrame], waitStages, 1, &commandBuffers[imageIndex], 1, &renderFinishedSemaphores[currentFrame]);
+        graphicsQueue.submit(submitInfo, inFlightFences[currentFrame]);
+
+        auto presentInfo = vk::PresentInfoKHR(1, &renderFinishedSemaphores[currentFrame], 1, &swapChain, &imageIndex, nullptr);
+        presentQueue.presentKHR(&presentInfo);
+
+        currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+    }
+
+    void createSyncObjects()
+    {
+        imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+        renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+        inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            imageAvailableSemaphores[i] = device.createSemaphore({}, nullptr);
+            renderFinishedSemaphores[i] = device.createSemaphore({}, nullptr);
+            inFlightFences[i] = device.createFence({vk::FenceCreateFlagBits::eSignaled}, nullptr);
+        }
     }
 
     void createCommandBuffers()
@@ -285,8 +334,13 @@ class HelloTriangleApplication
         // vk::SubpassDescription(flags_, pipelineBindPoint_, inputAttachmentCount_, pInputAttachments_, colorAttachmentCount_, pColorAttachments_, pResolveAttachments_, pDepthStencilAttachment_, preserveAttachmentCount_, pPreserveAttachments_)
         auto subpass = vk::SubpassDescription({}, vk::PipelineBindPoint::eGraphics, 0, nullptr, 1, &colorAttachmentRef, nullptr, nullptr, 0, nullptr);
 
+        // vk::SubpassDependency(srcSubpass_, dstSubpass_, srcStageMask_, dstStageMask_, srcAccessMask_, dstAccessMask_, dependencyFlags_)
+        auto dependency = vk::SubpassDependency(VK_SUBPASS_EXTERNAL, 0,
+                                                vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                                                {}, vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+
         // vk::RenderPassCreateInfo(flags_, attachmentCount_, pAttachments_, subpassCount_, pSubpasses_, dependencyCount_, pDependencies_)
-        auto renderPassInfo = vk::RenderPassCreateInfo({}, 1, &colorAttachment, 1, &subpass, 0, nullptr);
+        auto renderPassInfo = vk::RenderPassCreateInfo({}, 1, &colorAttachment, 1, &subpass, 1, &dependency);
         renderPass = device.createRenderPass(renderPassInfo, nullptr);
     }
 
