@@ -52,34 +52,34 @@ class HelloTriangleApplication
   private:
     GLFWwindow *window;
 
-    vk::Instance instance;
+    vk::UniqueInstance instance;
     vk::DispatchLoaderDynamic dldy;
-    vk::DebugUtilsMessengerEXT debugMessenger;
-    vk::SurfaceKHR surface;
+    vk::UniqueHandle<vk::DebugUtilsMessengerEXT, vk::DispatchLoaderDynamic> debugMessenger;
+    vk::UniqueSurfaceKHR surface;
 
     vk::PhysicalDevice physicalDevice = vk::PhysicalDevice(nullptr);
-    vk::Device device;
+    vk::UniqueDevice device;
 
     vk::Queue graphicsQueue;
     vk::Queue presentQueue;
 
-    vk::SwapchainKHR swapChain;
+    vk::UniqueSwapchainKHR swapChain;
     vk::Format swapChainImageFormat;
     vk::Extent2D swapChainExtent;
     std::vector<vk::Image> swapChainImages;
-    std::vector<vk::ImageView> swapChainImageViews;
-    std::vector<vk::Framebuffer> swapChainFramebuffers;
+    std::vector<vk::UniqueImageView> swapChainImageViews;
+    std::vector<vk::UniqueFramebuffer> swapChainFramebuffers;
 
-    vk::RenderPass renderPass;
-    vk::PipelineLayout pipelineLayout;
-    std::vector<vk::Pipeline> graphicsPipelines;
+    vk::UniqueRenderPass renderPass;
+    vk::UniquePipelineLayout pipelineLayout;
+    std::vector<vk::UniquePipeline> graphicsPipelines;
 
-    vk::CommandPool commandPool;
+    vk::UniqueCommandPool commandPool;
     std::vector<vk::CommandBuffer> commandBuffers;
 
-    std::vector<vk::Semaphore> imageAvailableSemaphores;
-    std::vector<vk::Semaphore> renderFinishedSemaphores;
-    std::vector<VkFence> inFlightFences;
+    std::vector<vk::UniqueSemaphore> imageAvailableSemaphores;
+    std::vector<vk::UniqueSemaphore> renderFinishedSemaphores;
+    std::vector<vk::UniqueFence> inFlightFences;
     size_t currentFrame = 0;
 
     bool framebufferResized = false;
@@ -128,50 +128,11 @@ class HelloTriangleApplication
             drawFrame();
         }
 
-        device.waitIdle();
-    }
-
-    void cleanupSwapChain()
-    {
-        for (auto framebuffer : swapChainFramebuffers) {
-            device.destroy(framebuffer, nullptr);
-        }
-
-        device.freeCommandBuffers(commandPool, commandBuffers);
-
-        for (auto graphicsPipeline : graphicsPipelines) {
-            device.destroy(graphicsPipeline, nullptr);
-        }
-
-        device.destroy(pipelineLayout, nullptr);
-        device.destroy(renderPass, nullptr);
-
-        for (auto imageView : swapChainImageViews) {
-            device.destroy(imageView, nullptr);
-        }
-
-        device.destroy(swapChain, nullptr);
+        device->waitIdle();
     }
 
     void cleanup()
     {
-        cleanupSwapChain();
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            device.destroy(imageAvailableSemaphores[i], nullptr);
-            device.destroy(renderFinishedSemaphores[i], nullptr);
-            device.destroy(inFlightFences[i], nullptr);
-        }
-
-        device.destroy(commandPool, nullptr);
-        device.destroy(nullptr);
-        instance.destroy(surface, nullptr);
-
-        if (enableValidationLayers) {
-            instance.destroyDebugUtilsMessengerEXT(debugMessenger, nullptr, dldy);
-        }
-
-        instance.destroy(nullptr);
         glfwDestroyWindow(window);
         glfwTerminate();
     }
@@ -184,9 +145,8 @@ class HelloTriangleApplication
             glfwWaitEvents();
         }
 
-        device.waitIdle();
-
-        cleanupSwapChain();
+        device->waitIdle();
+        device->freeCommandBuffers(*commandPool, commandBuffers);
 
         createSwapChain();
         createImageViews();
@@ -198,10 +158,10 @@ class HelloTriangleApplication
 
     void drawFrame()
     {
-        device.waitForFences({inFlightFences[currentFrame]}, VK_TRUE, std::numeric_limits<uint64_t>::max());
+        device->waitForFences({*inFlightFences[currentFrame]}, VK_TRUE, std::numeric_limits<uint64_t>::max());
 
         uint32_t imageIndex;
-        auto result = device.acquireNextImageKHR(swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphores[currentFrame], {}, &imageIndex);
+        auto result = device->acquireNextImageKHR(*swapChain, std::numeric_limits<uint64_t>::max(), *imageAvailableSemaphores[currentFrame], {}, &imageIndex);
 
         if (result == vk::Result::eErrorOutOfDateKHR) {
             recreateSwapChain();
@@ -210,15 +170,15 @@ class HelloTriangleApplication
             throw std::runtime_error("failed to acquire swap chain image!");
         }
 
-        device.resetFences({inFlightFences[currentFrame]});
+        device->resetFences({*inFlightFences[currentFrame]});
 
         vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 
         // vk::SubmitInfo(waitSemaphoreCount_ pWaitSemaphores_, pWaitDstStageMask_, commandBufferCount_, pCommandBuffers_, signalSemaphoreCount_, pSignalSemaphores_)
-        auto submitInfo = vk::SubmitInfo(1, &imageAvailableSemaphores[currentFrame], waitStages, 1, &commandBuffers[imageIndex], 1, &renderFinishedSemaphores[currentFrame]);
-        graphicsQueue.submit(submitInfo, inFlightFences[currentFrame]);
+        auto submitInfo = vk::SubmitInfo(1, &*imageAvailableSemaphores[currentFrame], waitStages, 1, &commandBuffers[imageIndex], 1, &*renderFinishedSemaphores[currentFrame]);
+        graphicsQueue.submit(submitInfo, *inFlightFences[currentFrame]);
 
-        auto presentInfo = vk::PresentInfoKHR(1, &renderFinishedSemaphores[currentFrame], 1, &swapChain, &imageIndex, nullptr);
+        auto presentInfo = vk::PresentInfoKHR(1, &*renderFinishedSemaphores[currentFrame], 1, &*swapChain, &imageIndex, nullptr);
         result = presentQueue.presentKHR(&presentInfo);
 
         if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || framebufferResized) {
@@ -238,17 +198,17 @@ class HelloTriangleApplication
         inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            imageAvailableSemaphores[i] = device.createSemaphore({}, nullptr);
-            renderFinishedSemaphores[i] = device.createSemaphore({}, nullptr);
-            inFlightFences[i] = device.createFence({vk::FenceCreateFlagBits::eSignaled}, nullptr);
+            imageAvailableSemaphores[i] = device->createSemaphoreUnique({}, nullptr);
+            renderFinishedSemaphores[i] = device->createSemaphoreUnique({}, nullptr);
+            inFlightFences[i] = device->createFenceUnique({vk::FenceCreateFlagBits::eSignaled}, nullptr);
         }
     }
 
     void createCommandBuffers()
     {
         // vk::CommandBufferAllocateInfo(commandPool_, level_, commandBufferCount_)
-        auto allocInfo = vk::CommandBufferAllocateInfo(commandPool, vk::CommandBufferLevel::ePrimary, swapChainFramebuffers.size());
-        commandBuffers = device.allocateCommandBuffers(allocInfo);
+        auto allocInfo = vk::CommandBufferAllocateInfo(*commandPool, vk::CommandBufferLevel::ePrimary, swapChainFramebuffers.size());
+        commandBuffers = device->allocateCommandBuffers(allocInfo);
 
         for (size_t i = 0; i < commandBuffers.size(); i++) {
             // vk::CommandBufferBeginInfo(flags_, pInheritanceInfo_)
@@ -258,9 +218,9 @@ class HelloTriangleApplication
             auto clearColor = vk::ClearValue(std::array{0.0f, 0.0f, 0.0f, 1.0f});
 
             // vk::RenderPassBeginInfo(renderPass_, framebuffer_, renderArea_, clearValueCount_, pClearValues_)
-            auto renderPassInfo = vk::RenderPassBeginInfo(renderPass, swapChainFramebuffers[i], {{0, 0}, swapChainExtent}, 1, &clearColor);
+            auto renderPassInfo = vk::RenderPassBeginInfo(*renderPass, *swapChainFramebuffers[i], {{0, 0}, swapChainExtent}, 1, &clearColor);
             commandBuffers[i].beginRenderPass(&renderPassInfo, vk::SubpassContents::eInline);
-            commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipelines[0]);
+            commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipelines[0]);
             commandBuffers[i].draw(3, 1, 0, 0);
             commandBuffers[i].endRenderPass();
             commandBuffers[i].end();
@@ -271,7 +231,7 @@ class HelloTriangleApplication
     {
         // vk::CommandPoolCreateInfo(flags_, queueFamilyIndex_)
         auto poolInfo = vk::CommandPoolCreateInfo({}, findQueueFamilies(physicalDevice).graphicsFamily.value());
-        commandPool = device.createCommandPool(poolInfo, nullptr);
+        commandPool = device->createCommandPoolUnique(poolInfo, nullptr);
     }
 
     void createFramebuffers()
@@ -280,8 +240,8 @@ class HelloTriangleApplication
 
         for (size_t i = 0; i < swapChainImageViews.size(); i++) {
             // vk::FramebufferCreateInfo(flags_, renderPass_, attachmentCount_, pAttachments_, width_, height_, layers_)
-            auto framebufferInfo = vk::FramebufferCreateInfo({}, renderPass, 1, &swapChainImageViews[i], swapChainExtent.width, swapChainExtent.height, 1);
-            swapChainFramebuffers[i] = device.createFramebuffer(framebufferInfo, nullptr);
+            auto framebufferInfo = vk::FramebufferCreateInfo({}, *renderPass, 1, &*swapChainImageViews[i], swapChainExtent.width, swapChainExtent.height, 1);
+            swapChainFramebuffers[i] = device->createFramebufferUnique(framebufferInfo, nullptr);
         }
     }
 
@@ -290,12 +250,12 @@ class HelloTriangleApplication
         auto vertShaderCode = readFile("shaders/shader.vert.spv");
         auto fragShaderCode = readFile("shaders/shader.frag.spv");
 
-        vk::ShaderModule vertShaderModule = createShaderModule(vertShaderCode);
-        vk::ShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+        vk::UniqueShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+        vk::UniqueShaderModule fragShaderModule = createShaderModule(fragShaderCode);
 
         // vk::PipelineShaderStageCreateInfo(flags_, stage_, module_, pName_, pSpecializationInfo_)
-        auto vertShaderStageInfo = vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, vertShaderModule, "main", nullptr);
-        auto fragShaderStageInfo = vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, fragShaderModule, "main", nullptr);
+        auto vertShaderStageInfo = vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, *vertShaderModule, "main", nullptr);
+        auto fragShaderStageInfo = vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, *fragShaderModule, "main", nullptr);
         vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
         // vk::PipelineVertexInputStateCreateInfo(flags_, vertexBindingDescriptionCount_, pVertexBindingDescriptions_, vertexAttributeDescriptionCount_, pVertexAttributeDescriptions_)
@@ -325,7 +285,7 @@ class HelloTriangleApplication
         // vk::PipelineColorBlendStateCreateInfo(flags_, logicOpEnable_, logicOp_, attachmentCount_, pAttachments_, blendConstants_)
         auto colorBlending = vk::PipelineColorBlendStateCreateInfo({}, VK_FALSE, vk::LogicOp::eCopy, 1, &colorBlendAttachment, {0, 0, 0, 0});
 
-        pipelineLayout = device.createPipelineLayout({}, nullptr);
+        pipelineLayout = device->createPipelineLayoutUnique({}, nullptr);
 
         auto pipelineInfo = vk::GraphicsPipelineCreateInfo({},               // flags_
                                                            2,                // stageCount_
@@ -339,16 +299,13 @@ class HelloTriangleApplication
                                                            nullptr,          // pDepthStencilState_
                                                            &colorBlending,   // pColorBlendState_
                                                            nullptr,          // pDynamicState_
-                                                           pipelineLayout,   // layout_
-                                                           renderPass,       // renderPass_
+                                                           *pipelineLayout,  // layout_
+                                                           *renderPass,      // renderPass_
                                                            0,                // subpass_
                                                            nullptr,          // basePipelineHandle_
                                                            -1);              // basePipelineIndex_
 
-        graphicsPipelines = device.createGraphicsPipelines(vk::PipelineCache(), pipelineInfo, nullptr);
-
-        device.destroy(vertShaderModule, nullptr);
-        device.destroy(fragShaderModule, nullptr);
+        graphicsPipelines = device->createGraphicsPipelinesUnique(vk::PipelineCache(), pipelineInfo, nullptr);
     }
 
     std::vector<char> readFile(const std::string &filename)
@@ -365,11 +322,11 @@ class HelloTriangleApplication
         return buffer;
     }
 
-    vk::ShaderModule createShaderModule(const std::vector<char> &code)
+    vk::UniqueShaderModule createShaderModule(const std::vector<char> &code)
     {
         // vk::ShaderModuleCreateInfo(flags_, codeSize_, pCode_)
         auto createInfo = vk::ShaderModuleCreateInfo({}, code.size(), reinterpret_cast<const uint32_t *>(code.data()));
-        return device.createShaderModule(createInfo, nullptr);
+        return device->createShaderModuleUnique(createInfo, nullptr);
     }
 
     void createRenderPass()
@@ -393,7 +350,7 @@ class HelloTriangleApplication
 
         // vk::RenderPassCreateInfo(flags_, attachmentCount_, pAttachments_, subpassCount_, pSubpasses_, dependencyCount_, pDependencies_)
         auto renderPassInfo = vk::RenderPassCreateInfo({}, 1, &colorAttachment, 1, &subpass, 1, &dependency);
-        renderPass = device.createRenderPass(renderPassInfo, nullptr);
+        renderPass = device->createRenderPassUnique(renderPassInfo, nullptr);
     }
 
     void createImageViews()
@@ -403,7 +360,7 @@ class HelloTriangleApplication
         for (size_t i = 0; i < swapChainImages.size(); i++) {
             // vk::ImageViewCreateInfo(flags_, image_, viewType_, format_, components_, vk::ImageSubresourceRange(aspectMask_, baseMipLevel_, levelCount_, baseArrayLayer_, layerCount_))
             auto createInfo = vk::ImageViewCreateInfo({}, swapChainImages[i], vk::ImageViewType::e2D, swapChainImageFormat, {}, {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
-            swapChainImageViews[i] = device.createImageView(createInfo, nullptr);
+            swapChainImageViews[i] = device->createImageViewUnique(createInfo, nullptr);
         }
     }
 
@@ -434,7 +391,7 @@ class HelloTriangleApplication
         }
 
         auto createInfo = vk::SwapchainCreateInfoKHR({},                                             // flags_
-                                                     surface,                                        // surface_
+                                                     *surface,                                       // surface_
                                                      imageCount,                                     // minImageCount_
                                                      surfaceFormat.format,                           // imageFormat_
                                                      surfaceFormat.colorSpace,                       // imageColorSpace_
@@ -450,8 +407,8 @@ class HelloTriangleApplication
                                                      VK_TRUE,                                        // clipped_
                                                      nullptr);                                       // oldSwapchain_
 
-        swapChain = device.createSwapchainKHR(createInfo, nullptr);
-        swapChainImages = device.getSwapchainImagesKHR(swapChain);
+        swapChain = device->createSwapchainKHRUnique(createInfo, nullptr);
+        swapChainImages = device->getSwapchainImagesKHR(*swapChain);
         swapChainImageFormat = surfaceFormat.format;
         swapChainExtent = extent;
     }
@@ -512,14 +469,14 @@ class HelloTriangleApplication
         // vk::DeviceCreateInfo(flags_, queueCreateInfoCount_, pQueueCreateInfos_, enabledLayerCount_, ppEnabledLayerNames, enabledExtensionCount_, ppEnabledExtensionNames_, pEnabledFeatures_)
         auto createInfo = vk::DeviceCreateInfo({}, queueCreateInfos.size(), queueCreateInfos.data(), 0, nullptr, deviceExtensions.size(), deviceExtensions.data(), nullptr);
 
-        device = physicalDevice.createDevice(createInfo, nullptr);
-        graphicsQueue = device.getQueue(indices.graphicsFamily.value(), 0);
-        presentQueue = device.getQueue(indices.presentFamily.value(), 0);
+        device = physicalDevice.createDeviceUnique(createInfo, nullptr);
+        graphicsQueue = device->getQueue(indices.graphicsFamily.value(), 0);
+        presentQueue = device->getQueue(indices.presentFamily.value(), 0);
     }
 
     void pickPhysicalDevice()
     {
-        for (const auto &device : instance.enumeratePhysicalDevices()) {
+        for (const auto &device : instance->enumeratePhysicalDevices()) {
             if (isDeviceSuitable(device)) {
                 physicalDevice = device;
                 break;
@@ -542,7 +499,7 @@ class HelloTriangleApplication
 
     SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice device)
     {
-        return {device.getSurfaceCapabilitiesKHR(surface), device.getSurfaceFormatsKHR(surface), device.getSurfacePresentModesKHR(surface)};
+        return {device.getSurfaceCapabilitiesKHR(*surface), device.getSurfaceFormatsKHR(*surface), device.getSurfacePresentModesKHR(*surface)};
     }
 
     bool checkDeviceExtensionSupport(vk::PhysicalDevice device)
@@ -565,7 +522,7 @@ class HelloTriangleApplication
             }
 
             VkBool32 presentSupport = false;
-            device.getSurfaceSupportKHR(i, surface, &presentSupport);
+            device.getSurfaceSupportKHR(i, *surface, &presentSupport);
 
             if (queueFamily.queueCount > 0 && presentSupport) {
                 indices.presentFamily = i;
@@ -581,9 +538,12 @@ class HelloTriangleApplication
 
     void createSurface()
     {
-        if (glfwCreateWindowSurface(instance, window, nullptr, reinterpret_cast<VkSurfaceKHR *>(&surface)) != VK_SUCCESS) {
+        VkSurfaceKHR surfaceTmp;
+        if (glfwCreateWindowSurface(*instance, window, nullptr, &surfaceTmp) != VK_SUCCESS) {
             throw std::runtime_error("failed to create window surface!");
         }
+        // Set the instance as the allocator for the surface for correct order of destruction
+        surface = vk::UniqueSurfaceKHR(surfaceTmp, *instance);
     }
 
     void setupDebugMessenger()
@@ -597,7 +557,7 @@ class HelloTriangleApplication
 
         // vk::DebugUtilsMessengerCreateInfoEXT(flags_, messageSeverity_, messageType_, pfnUserCallback_)
         auto createInfo = vk::DebugUtilsMessengerCreateInfoEXT({}, messageSeverity, messageType, debugCallback);
-        debugMessenger = instance.createDebugUtilsMessengerEXT(createInfo, nullptr, dldy);
+        debugMessenger = instance->createDebugUtilsMessengerEXTUnique(createInfo, nullptr, dldy);
     }
 
     void createInstance()
@@ -626,8 +586,8 @@ class HelloTriangleApplication
         // vk::InstanceCreateInfo(flags_, pApplicationInfo_, enabledLayerCount_, ppEnabledLayerNames_, enabledExtensionCount_, ppEnabledExtensionNames_)
         auto createInfo = vk::InstanceCreateInfo({}, &appInfo, enabledLayerCount, ppEnabledLayerNames, enabledExtensionCount, ppEnabledExtensionNames);
 
-        instance = vk::createInstance(createInfo, nullptr);
-        dldy.init(instance);
+        instance = vk::createInstanceUnique(createInfo, nullptr);
+        dldy.init(*instance);
     }
 
     bool checkValidationLayerSupport()
