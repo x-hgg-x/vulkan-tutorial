@@ -228,9 +228,9 @@ class HelloTriangleApplication
         inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            imageAvailableSemaphores[i] = device->createSemaphoreUnique({}, nullptr);
-            renderFinishedSemaphores[i] = device->createSemaphoreUnique({}, nullptr);
-            inFlightFences[i] = device->createFenceUnique({vk::FenceCreateFlagBits::eSignaled}, nullptr);
+            imageAvailableSemaphores[i] = device->createSemaphoreUnique({});
+            renderFinishedSemaphores[i] = device->createSemaphoreUnique({});
+            inFlightFences[i] = device->createFenceUnique({vk::FenceCreateFlagBits::eSignaled});
         }
     }
 
@@ -262,14 +262,14 @@ class HelloTriangleApplication
     {
         // vk::BufferCreateInfo(flags_, size_, usage_, sharingMode_, queueFamilyIndexCount_, pQueueFamilyIndices_)
         auto bufferInfo = vk::BufferCreateInfo({}, sizeof(Vertex) * vertices.size(), vk::BufferUsageFlagBits::eVertexBuffer, vk::SharingMode::eExclusive, 0, nullptr);
-        vertexBuffer = device->createBufferUnique(bufferInfo, nullptr);
+        vertexBuffer = device->createBufferUnique(bufferInfo);
 
         auto memRequirements = device->getBufferMemoryRequirements(*vertexBuffer);
         uint32_t memoryType = findMemoryType(memRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
         // vk::MemoryAllocateInfo(allocationSize_, memoryTypeIndex_)
         auto allocInfo = vk::MemoryAllocateInfo(memRequirements.size, memoryType);
-        vertexBufferMemory = device->allocateMemoryUnique(allocInfo, nullptr);
+        vertexBufferMemory = device->allocateMemoryUnique(allocInfo);
 
         device->bindBufferMemory(*vertexBuffer, *vertexBufferMemory, 0);
 
@@ -293,7 +293,7 @@ class HelloTriangleApplication
     {
         // vk::CommandPoolCreateInfo(flags_, queueFamilyIndex_)
         auto poolInfo = vk::CommandPoolCreateInfo({}, findQueueFamilies(physicalDevice).graphicsFamily.value());
-        commandPool = device->createCommandPoolUnique(poolInfo, nullptr);
+        commandPool = device->createCommandPoolUnique(poolInfo);
     }
 
     void createFramebuffers()
@@ -303,7 +303,7 @@ class HelloTriangleApplication
         for (size_t i = 0; i < swapChainImageViews.size(); i++) {
             // vk::FramebufferCreateInfo(flags_, renderPass_, attachmentCount_, pAttachments_, width_, height_, layers_)
             auto framebufferInfo = vk::FramebufferCreateInfo({}, *renderPass, 1, &*swapChainImageViews[i], swapChainExtent.width, swapChainExtent.height, 1);
-            swapChainFramebuffers[i] = device->createFramebufferUnique(framebufferInfo, nullptr);
+            swapChainFramebuffers[i] = device->createFramebufferUnique(framebufferInfo);
         }
     }
 
@@ -350,7 +350,7 @@ class HelloTriangleApplication
         // vk::PipelineColorBlendStateCreateInfo(flags_, logicOpEnable_, logicOp_, attachmentCount_, pAttachments_, blendConstants_)
         auto colorBlending = vk::PipelineColorBlendStateCreateInfo({}, VK_FALSE, vk::LogicOp::eCopy, 1, &colorBlendAttachment, {0, 0, 0, 0});
 
-        pipelineLayout = device->createPipelineLayoutUnique({}, nullptr);
+        pipelineLayout = device->createPipelineLayoutUnique({});
 
         auto pipelineInfo = vk::GraphicsPipelineCreateInfo({},               // flags_
                                                            2,                // stageCount_
@@ -370,7 +370,7 @@ class HelloTriangleApplication
                                                            nullptr,          // basePipelineHandle_
                                                            -1);              // basePipelineIndex_
 
-        graphicsPipelines = device->createGraphicsPipelinesUnique(vk::PipelineCache(), pipelineInfo, nullptr);
+        graphicsPipelines = device->createGraphicsPipelinesUnique(vk::PipelineCache(), pipelineInfo);
     }
 
     std::vector<char> readFile(const std::string &filename)
@@ -391,7 +391,7 @@ class HelloTriangleApplication
     {
         // vk::ShaderModuleCreateInfo(flags_, codeSize_, pCode_)
         auto createInfo = vk::ShaderModuleCreateInfo({}, code.size(), reinterpret_cast<const uint32_t *>(code.data()));
-        return device->createShaderModuleUnique(createInfo, nullptr);
+        return device->createShaderModuleUnique(createInfo);
     }
 
     void createRenderPass()
@@ -415,7 +415,7 @@ class HelloTriangleApplication
 
         // vk::RenderPassCreateInfo(flags_, attachmentCount_, pAttachments_, subpassCount_, pSubpasses_, dependencyCount_, pDependencies_)
         auto renderPassInfo = vk::RenderPassCreateInfo({}, 1, &colorAttachment, 1, &subpass, 1, &dependency);
-        renderPass = device->createRenderPassUnique(renderPassInfo, nullptr);
+        renderPass = device->createRenderPassUnique(renderPassInfo);
     }
 
     void createImageViews()
@@ -425,7 +425,7 @@ class HelloTriangleApplication
         for (size_t i = 0; i < swapChainImages.size(); i++) {
             // vk::ImageViewCreateInfo(flags_, image_, viewType_, format_, components_, vk::ImageSubresourceRange(aspectMask_, baseMipLevel_, levelCount_, baseArrayLayer_, layerCount_))
             auto createInfo = vk::ImageViewCreateInfo({}, swapChainImages[i], vk::ImageViewType::e2D, swapChainImageFormat, {}, {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
-            swapChainImageViews[i] = device->createImageViewUnique(createInfo, nullptr);
+            swapChainImageViews[i] = device->createImageViewUnique(createInfo);
         }
     }
 
@@ -472,7 +472,7 @@ class HelloTriangleApplication
                                                      VK_TRUE,                                        // clipped_
                                                      nullptr);                                       // oldSwapchain_
 
-        swapChain = device->createSwapchainKHRUnique(createInfo, nullptr);
+        swapChain = device->createSwapchainKHRUnique(createInfo);
         swapChainImages = device->getSwapchainImagesKHR(*swapChain);
         swapChainImageFormat = surfaceFormat.format;
         swapChainExtent = extent;
@@ -534,7 +534,7 @@ class HelloTriangleApplication
         // vk::DeviceCreateInfo(flags_, queueCreateInfoCount_, pQueueCreateInfos_, enabledLayerCount_, ppEnabledLayerNames, enabledExtensionCount_, ppEnabledExtensionNames_, pEnabledFeatures_)
         auto createInfo = vk::DeviceCreateInfo({}, queueCreateInfos.size(), queueCreateInfos.data(), 0, nullptr, deviceExtensions.size(), deviceExtensions.data(), nullptr);
 
-        device = physicalDevice.createDeviceUnique(createInfo, nullptr);
+        device = physicalDevice.createDeviceUnique(createInfo);
         graphicsQueue = device->getQueue(indices.graphicsFamily.value(), 0);
         presentQueue = device->getQueue(indices.presentFamily.value(), 0);
     }
@@ -651,7 +651,7 @@ class HelloTriangleApplication
         // vk::InstanceCreateInfo(flags_, pApplicationInfo_, enabledLayerCount_, ppEnabledLayerNames_, enabledExtensionCount_, ppEnabledExtensionNames_)
         auto createInfo = vk::InstanceCreateInfo({}, &appInfo, enabledLayerCount, ppEnabledLayerNames, enabledExtensionCount, ppEnabledExtensionNames);
 
-        instance = vk::createInstanceUnique(createInfo, nullptr);
+        instance = vk::createInstanceUnique(createInfo);
         dldy.init(*instance);
     }
 
