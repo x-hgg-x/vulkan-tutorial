@@ -100,6 +100,10 @@ class HelloTriangleApplication
     std::vector<vk::UniquePipeline> graphicsPipelines;
 
     vk::UniqueCommandPool commandPool;
+
+    vk::UniqueDeviceMemory vertexBufferMemory;
+    vk::UniqueBuffer vertexBuffer;
+
     std::vector<vk::CommandBuffer> commandBuffers;
 
     std::vector<vk::UniqueSemaphore> imageAvailableSemaphores;
@@ -139,6 +143,7 @@ class HelloTriangleApplication
         createGraphicsPipeline();
         createFramebuffers();
         createCommandPool();
+        createVertexBuffer();
         createCommandBuffers();
         createSyncObjects();
     }
@@ -246,10 +251,42 @@ class HelloTriangleApplication
             auto renderPassInfo = vk::RenderPassBeginInfo(*renderPass, *swapChainFramebuffers[i], {{0, 0}, swapChainExtent}, 1, &clearColor);
             commandBuffers[i].beginRenderPass(&renderPassInfo, vk::SubpassContents::eInline);
             commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipelines[0]);
-            commandBuffers[i].draw(3, 1, 0, 0);
+            commandBuffers[i].bindVertexBuffers(0, *vertexBuffer, {0});
+            commandBuffers[i].draw(vertices.size(), 1, 0, 0);
             commandBuffers[i].endRenderPass();
             commandBuffers[i].end();
         }
+    }
+
+    void createVertexBuffer()
+    {
+        // vk::BufferCreateInfo(flags_, size_, usage_, sharingMode_, queueFamilyIndexCount_, pQueueFamilyIndices_)
+        auto bufferInfo = vk::BufferCreateInfo({}, sizeof(Vertex) * vertices.size(), vk::BufferUsageFlagBits::eVertexBuffer, vk::SharingMode::eExclusive, 0, nullptr);
+        vertexBuffer = device->createBufferUnique(bufferInfo, nullptr);
+
+        auto memRequirements = device->getBufferMemoryRequirements(*vertexBuffer);
+        uint32_t memoryType = findMemoryType(memRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+        // vk::MemoryAllocateInfo(allocationSize_, memoryTypeIndex_)
+        auto allocInfo = vk::MemoryAllocateInfo(memRequirements.size, memoryType);
+        vertexBufferMemory = device->allocateMemoryUnique(allocInfo, nullptr);
+
+        device->bindBufferMemory(*vertexBuffer, *vertexBufferMemory, 0);
+
+        auto data = device->mapMemory(*vertexBufferMemory, 0, bufferInfo.size, {});
+        memcpy(data, vertices.data(), bufferInfo.size);
+        device->unmapMemory(*vertexBufferMemory);
+    }
+
+    uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties)
+    {
+        auto memProperties = physicalDevice.getMemoryProperties();
+        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+                return i;
+            }
+        }
+        throw std::runtime_error("failed to find suitable memory type!");
     }
 
     void createCommandPool()
