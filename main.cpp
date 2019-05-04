@@ -1,6 +1,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 
 #include <algorithm>
 #include <cstdlib>
@@ -9,6 +10,7 @@
 #include <iostream>
 #include <optional>
 #include <set>
+#include <stddef.h>
 #include <stdexcept>
 
 const int WIDTH = 800;
@@ -24,6 +26,29 @@ const bool enableValidationLayers = false;
 #else
 const bool enableValidationLayers = true;
 #endif
+
+struct Vertex {
+    glm::vec2 pos;
+    glm::vec3 color;
+
+    static vk::VertexInputBindingDescription getBindingDescription()
+    {
+        // vk::VertexInputBindingDescription(binding_, stride_, inputRate_)
+        return vk::VertexInputBindingDescription(0, sizeof(Vertex), vk::VertexInputRate::eVertex);
+    }
+
+    static std::array<vk::VertexInputAttributeDescription, 2> getAttributeDescriptions()
+    {
+        // vk::VertexInputAttributeDescription(location_, binding_, format_, offset_)
+        return {{{0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, pos)},
+                 {1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)}}};
+    }
+};
+
+const std::vector<Vertex> vertices = {
+    {{0, -0.5}, {1, 0, 0}},
+    {{0.5, 0.5}, {0, 1, 0}},
+    {{-0.5, 0.5}, {0, 0, 1}}};
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -258,8 +283,11 @@ class HelloTriangleApplication
         auto fragShaderStageInfo = vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, *fragShaderModule, "main", nullptr);
         vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
+        auto bindingDescription = Vertex::getBindingDescription();
+        auto attributeDescriptions = Vertex::getAttributeDescriptions();
+
         // vk::PipelineVertexInputStateCreateInfo(flags_, vertexBindingDescriptionCount_, pVertexBindingDescriptions_, vertexAttributeDescriptionCount_, pVertexAttributeDescriptions_)
-        auto vertexInputInfo = vk::PipelineVertexInputStateCreateInfo({}, 0, nullptr, 0, nullptr);
+        auto vertexInputInfo = vk::PipelineVertexInputStateCreateInfo({}, 1, &bindingDescription, attributeDescriptions.size(), attributeDescriptions.data());
 
         // vk::PipelineInputAssemblyStateCreateInfo(flags_, topology_, primitiveRestartEnable_)
         auto inputAssembly = vk::PipelineInputAssemblyStateCreateInfo({}, vk::PrimitiveTopology::eTriangleList, VK_FALSE);
