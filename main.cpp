@@ -18,7 +18,7 @@ const int HEIGHT = 600;
 
 const int MAX_FRAMES_IN_FLIGHT = 1;
 
-const std::vector<const char *> validationLayers = {"VK_LAYER_LUNARG_standard_validation"};
+const std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};
 const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
 #ifdef NDEBUG
@@ -260,22 +260,55 @@ class HelloTriangleApplication
 
     void createVertexBuffer()
     {
-        // vk::BufferCreateInfo(flags_, size_, usage_, sharingMode_, queueFamilyIndexCount_, pQueueFamilyIndices_)
-        auto bufferInfo = vk::BufferCreateInfo({}, sizeof(Vertex) * vertices.size(), vk::BufferUsageFlagBits::eVertexBuffer, vk::SharingMode::eExclusive, 0, nullptr);
-        vertexBuffer = device->createBufferUnique(bufferInfo);
+        vk::DeviceSize bufferSize = sizeof(Vertex) * vertices.size();
+        vk::UniqueDeviceMemory stagingBufferMemory;
+        vk::UniqueBuffer stagingBuffer;
 
-        auto memRequirements = device->getBufferMemoryRequirements(*vertexBuffer);
-        uint32_t memoryType = findMemoryType(memRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+        createUniqueBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
+
+        auto data = device->mapMemory(*stagingBufferMemory, 0, bufferSize, {});
+        memcpy(data, vertices.data(), bufferSize);
+        device->unmapMemory(*stagingBufferMemory);
+
+        createUniqueBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, vertexBuffer, vertexBufferMemory);
+        copyBuffer(*stagingBuffer, *vertexBuffer, bufferSize);
+    }
+
+    void createUniqueBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::UniqueBuffer &buffer, vk::UniqueDeviceMemory &bufferMemory)
+    {
+        // vk::BufferCreateInfo(flags_, size_, usage_, sharingMode_, queueFamilyIndexCount_, pQueueFamilyIndices_)
+        auto bufferInfo = vk::BufferCreateInfo({}, size, usage, vk::SharingMode::eExclusive, 0, nullptr);
+        buffer = device->createBufferUnique(bufferInfo);
+
+        auto memRequirements = device->getBufferMemoryRequirements(*buffer);
+        uint32_t memoryType = findMemoryType(memRequirements.memoryTypeBits, properties);
 
         // vk::MemoryAllocateInfo(allocationSize_, memoryTypeIndex_)
         auto allocInfo = vk::MemoryAllocateInfo(memRequirements.size, memoryType);
-        vertexBufferMemory = device->allocateMemoryUnique(allocInfo);
+        bufferMemory = device->allocateMemoryUnique(allocInfo);
 
-        device->bindBufferMemory(*vertexBuffer, *vertexBufferMemory, 0);
+        device->bindBufferMemory(*buffer, *bufferMemory, 0);
+    }
 
-        auto data = device->mapMemory(*vertexBufferMemory, 0, bufferInfo.size, {});
-        memcpy(data, vertices.data(), bufferInfo.size);
-        device->unmapMemory(*vertexBufferMemory);
+    void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size)
+    {
+        // vk::CommandBufferAllocateInfo(commandPool_, level_, commandBufferCount_)
+        auto allocInfo = vk::CommandBufferAllocateInfo(*commandPool, vk::CommandBufferLevel::ePrimary, 1);
+        std::vector<vk::UniqueCommandBuffer> vertexcommandBuffers = device->allocateCommandBuffersUnique(allocInfo);
+
+        // vk::CommandBufferBeginInfo(flags_, pInheritanceInfo_)
+        auto beginInfo = vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit, nullptr);
+        vertexcommandBuffers[0]->begin(beginInfo);
+
+        // vk::BufferCopy(srcOffset_, DeviceSize dstOffset_, DeviceSize size_)
+        auto copyRegion = vk::BufferCopy(0, 0, size);
+        vertexcommandBuffers[0]->copyBuffer(srcBuffer, dstBuffer, copyRegion);
+        vertexcommandBuffers[0]->end();
+
+        // vk::SubmitInfo(waitSemaphoreCount_ pWaitSemaphores_, pWaitDstStageMask_, commandBufferCount_, pCommandBuffers_, signalSemaphoreCount_, pSignalSemaphores_)
+        auto submitInfo = vk::SubmitInfo(0, nullptr, nullptr, 1, &*vertexcommandBuffers[0], 0, nullptr);
+        graphicsQueue.submit(submitInfo, nullptr);
+        graphicsQueue.waitIdle();
     }
 
     uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties)
