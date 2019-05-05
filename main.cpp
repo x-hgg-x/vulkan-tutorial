@@ -38,7 +38,7 @@ struct Vertex {
     static vk::VertexInputBindingDescription getBindingDescription()
     {
         // vk::VertexInputBindingDescription(binding_, stride_, inputRate_)
-        return vk::VertexInputBindingDescription(0, sizeof(Vertex), vk::VertexInputRate::eVertex);
+        return {0, sizeof(Vertex), vk::VertexInputRate::eVertex};
     }
 
     static std::array<vk::VertexInputAttributeDescription, 2> getAttributeDescriptions()
@@ -95,7 +95,7 @@ class HelloVulkan
     vk::UniqueHandle<vk::DebugUtilsMessengerEXT, vk::DispatchLoaderDynamic> debugMessenger;
     vk::UniqueSurfaceKHR surface;
 
-    vk::PhysicalDevice physicalDevice = vk::PhysicalDevice(nullptr);
+    vk::PhysicalDevice physicalDevice;
     vk::UniqueDevice device;
 
     vk::Queue graphicsQueue;
@@ -148,8 +148,7 @@ class HelloVulkan
 
     static void framebufferResizeCallback(GLFWwindow *window, int width, int height)
     {
-        auto app = reinterpret_cast<HelloVulkan *>(glfwGetWindowUserPointer(window));
-        app->framebufferResized = true;
+        reinterpret_cast<HelloVulkan *>(glfwGetWindowUserPointer(window))->framebufferResized = true;
     }
 
     void initVulkan()
@@ -237,8 +236,7 @@ class HelloVulkan
         updateUniformBuffer(imageIndex);
 
         // vk::SubmitInfo(waitSemaphoreCount_, pWaitSemaphores_, pWaitDstStageMask_, commandBufferCount_, pCommandBuffers_, signalSemaphoreCount_, pSignalSemaphores_)
-        auto submitInfo = vk::SubmitInfo(1, &*imageAvailableSemaphores[currentFrame], waitStages, 1, &commandBuffers[imageIndex], 1, &*renderFinishedSemaphores[currentFrame]);
-        graphicsQueue.submit(submitInfo, *inFlightFences[currentFrame]);
+        graphicsQueue.submit({{1, &*imageAvailableSemaphores[currentFrame], waitStages, 1, &commandBuffers[imageIndex], 1, &*renderFinishedSemaphores[currentFrame]}}, *inFlightFences[currentFrame]);
 
         auto presentInfo = vk::PresentInfoKHR(1, &*renderFinishedSemaphores[currentFrame], 1, &*swapChain, &imageIndex, nullptr);
         result = presentQueue.presentKHR(&presentInfo);
@@ -288,13 +286,11 @@ class HelloVulkan
     void createCommandBuffers()
     {
         // vk::CommandBufferAllocateInfo(commandPool_, level_, commandBufferCount_)
-        auto allocInfo = vk::CommandBufferAllocateInfo(*commandPool, vk::CommandBufferLevel::ePrimary, swapChainFramebuffers.size());
-        commandBuffers = device->allocateCommandBuffers(allocInfo);
+        commandBuffers = device->allocateCommandBuffers({*commandPool, vk::CommandBufferLevel::ePrimary, (uint32_t)swapChainFramebuffers.size()});
 
         for (size_t i = 0; i < commandBuffers.size(); i++) {
             // vk::CommandBufferBeginInfo(flags_, pInheritanceInfo_)
-            auto beginInfo = vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse, nullptr);
-            commandBuffers[i].begin(beginInfo);
+            commandBuffers[i].begin({vk::CommandBufferUsageFlagBits::eSimultaneousUse, nullptr});
 
             auto clearColor = vk::ClearValue(std::array{0.0f, 0.0f, 0.0f, 1.0f});
 
@@ -313,19 +309,17 @@ class HelloVulkan
 
     void createDescriptorSets()
     {
-        std::vector<vk::DescriptorSetLayout> layouts(swapChainImages.size(), *descriptorSetLayout);
+        auto layouts = std::vector<vk::DescriptorSetLayout>(swapChainImages.size(), *descriptorSetLayout);
 
         // vk::DescriptorSetAllocateInfo(descriptorPool_, descriptorSetCount_, pSetLayouts_)
-        auto allocInfo = vk::DescriptorSetAllocateInfo(*descriptorPool, swapChainImages.size(), layouts.data());
-        descriptorSets = device->allocateDescriptorSets(allocInfo);
+        descriptorSets = device->allocateDescriptorSets({*descriptorPool, (uint32_t)swapChainImages.size(), layouts.data()});
 
         for (size_t i = 0; i < swapChainImages.size(); i++) {
             // vk::DescriptorBufferInfo(buffer_, offset_, range_)
             auto bufferInfo = vk::DescriptorBufferInfo(*uniformBuffers[i], 0, sizeof(UniformBufferObject));
 
             // vk::WriteDescriptorSet(dstSet_, dstBinding_, dstArrayElement_, descriptorCount_, descriptorType_, pImageInfo_, pBufferInfo_, pTexelBufferView_)
-            auto descriptorWrite = vk::WriteDescriptorSet(descriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &bufferInfo, nullptr);
-            device->updateDescriptorSets(descriptorWrite, {});
+            device->updateDescriptorSets({{descriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &bufferInfo, nullptr}}, {});
         }
     }
 
@@ -334,8 +328,7 @@ class HelloVulkan
         // vk::DescriptorPoolSize(type_, descriptorCount_)
         auto poolSize = vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, swapChainImages.size());
         // vk::DescriptorPoolCreateInfo(flags_, maxSets_, poolSizeCount_, pPoolSizes_)
-        auto poolInfo = vk::DescriptorPoolCreateInfo({}, swapChainImages.size(), 1, &poolSize);
-        descriptorPool = device->createDescriptorPoolUnique(poolInfo);
+        descriptorPool = device->createDescriptorPoolUnique({{}, (uint32_t)swapChainImages.size(), 1, &poolSize});
     }
 
     void createVertexBuffer()
@@ -385,37 +378,30 @@ class HelloVulkan
     void createUniqueBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::UniqueBuffer &buffer, vk::UniqueDeviceMemory &bufferMemory)
     {
         // vk::BufferCreateInfo(flags_, size_, usage_, sharingMode_, queueFamilyIndexCount_, pQueueFamilyIndices_)
-        auto bufferInfo = vk::BufferCreateInfo({}, size, usage, vk::SharingMode::eExclusive, 0, nullptr);
-        buffer = device->createBufferUnique(bufferInfo);
+        buffer = device->createBufferUnique({{}, size, usage, vk::SharingMode::eExclusive, 0, nullptr});
 
         auto memRequirements = device->getBufferMemoryRequirements(*buffer);
         uint32_t memoryType = findMemoryType(memRequirements.memoryTypeBits, properties);
 
         // vk::MemoryAllocateInfo(allocationSize_, memoryTypeIndex_)
-        auto allocInfo = vk::MemoryAllocateInfo(memRequirements.size, memoryType);
-        bufferMemory = device->allocateMemoryUnique(allocInfo);
-
+        bufferMemory = device->allocateMemoryUnique({memRequirements.size, memoryType});
         device->bindBufferMemory(*buffer, *bufferMemory, 0);
     }
 
     void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size)
     {
         // vk::CommandBufferAllocateInfo(commandPool_, level_, commandBufferCount_)
-        auto allocInfo = vk::CommandBufferAllocateInfo(*commandPool, vk::CommandBufferLevel::ePrimary, 1);
-        std::vector<vk::UniqueCommandBuffer> vertexcommandBuffers = device->allocateCommandBuffersUnique(allocInfo);
+        auto vertexcommandBuffers = device->allocateCommandBuffersUnique({*commandPool, vk::CommandBufferLevel::ePrimary, 1});
 
         // vk::CommandBufferBeginInfo(flags_, pInheritanceInfo_)
-        auto beginInfo = vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit, nullptr);
-        vertexcommandBuffers[0]->begin(beginInfo);
+        vertexcommandBuffers[0]->begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit, nullptr});
 
-        // vk::BufferCopy(srcOffset_, DeviceSize dstOffset_, DeviceSize size_)
-        auto copyRegion = vk::BufferCopy(0, 0, size);
-        vertexcommandBuffers[0]->copyBuffer(srcBuffer, dstBuffer, copyRegion);
+        // vk::BufferCopy(srcOffset_, dstOffset_, size_)
+        vertexcommandBuffers[0]->copyBuffer(srcBuffer, dstBuffer, {{0, 0, size}});
         vertexcommandBuffers[0]->end();
 
         // vk::SubmitInfo(waitSemaphoreCount_, pWaitSemaphores_, pWaitDstStageMask_, commandBufferCount_, pCommandBuffers_, signalSemaphoreCount_, pSignalSemaphores_)
-        auto submitInfo = vk::SubmitInfo(0, nullptr, nullptr, 1, &*vertexcommandBuffers[0], 0, nullptr);
-        graphicsQueue.submit(submitInfo, nullptr);
+        graphicsQueue.submit({{0, nullptr, nullptr, 1, &*vertexcommandBuffers[0], 0, nullptr}}, nullptr);
         graphicsQueue.waitIdle();
     }
 
@@ -433,33 +419,27 @@ class HelloVulkan
     void createCommandPool()
     {
         // vk::CommandPoolCreateInfo(flags_, queueFamilyIndex_)
-        auto poolInfo = vk::CommandPoolCreateInfo({}, findQueueFamilies(physicalDevice).graphicsFamily.value());
-        commandPool = device->createCommandPoolUnique(poolInfo);
+        commandPool = device->createCommandPoolUnique({{}, findQueueFamilies(physicalDevice).graphicsFamily.value()});
     }
 
     void createFramebuffers()
     {
         swapChainFramebuffers.resize(swapChainImageViews.size());
-
         for (size_t i = 0; i < swapChainImageViews.size(); i++) {
             // vk::FramebufferCreateInfo(flags_, renderPass_, attachmentCount_, pAttachments_, width_, height_, layers_)
-            auto framebufferInfo = vk::FramebufferCreateInfo({}, *renderPass, 1, &*swapChainImageViews[i], swapChainExtent.width, swapChainExtent.height, 1);
-            swapChainFramebuffers[i] = device->createFramebufferUnique(framebufferInfo);
+            swapChainFramebuffers[i] = device->createFramebufferUnique({{}, *renderPass, 1, &*swapChainImageViews[i], swapChainExtent.width, swapChainExtent.height, 1});
         }
     }
 
     void createGraphicsPipeline()
     {
-        auto vertShaderCode = readFile("shaders/shader.vert.spv");
-        auto fragShaderCode = readFile("shaders/shader.frag.spv");
-
-        vk::UniqueShaderModule vertShaderModule = createShaderModule(vertShaderCode);
-        vk::UniqueShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+        vk::UniqueShaderModule vertShaderModule = createShaderModule("shaders/shader.vert.spv");
+        vk::UniqueShaderModule fragShaderModule = createShaderModule("shaders/shader.frag.spv");
 
         // vk::PipelineShaderStageCreateInfo(flags_, stage_, module_, pName_, pSpecializationInfo_)
-        auto vertShaderStageInfo = vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, *vertShaderModule, "main", nullptr);
-        auto fragShaderStageInfo = vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, *fragShaderModule, "main", nullptr);
-        vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+        vk::PipelineShaderStageCreateInfo shaderStages[] = {
+            {{}, vk::ShaderStageFlagBits::eVertex, *vertShaderModule, "main", nullptr},
+            {{}, vk::ShaderStageFlagBits::eFragment, *fragShaderModule, "main", nullptr}};
 
         auto bindingDescription = Vertex::getBindingDescription();
         auto attributeDescriptions = Vertex::getAttributeDescriptions();
@@ -483,40 +463,42 @@ class HelloVulkan
         auto multisampling = vk::PipelineMultisampleStateCreateInfo();
 
         // vk::PipelineColorBlendAttachmentState(blendEnable_, srcColorBlendFactor_, dstColorBlendFactor_, colorBlendOp_, srcAlphaBlendFactor_, dstAlphaBlendFactor_, alphaBlendOp_, colorWriteMask_)
-        auto colorBlendAttachment = vk::PipelineColorBlendAttachmentState(VK_FALSE,
-                                                                          vk::BlendFactor::eOne, vk::BlendFactor::eZero, vk::BlendOp::eAdd,
-                                                                          vk::BlendFactor::eOne, vk::BlendFactor::eZero, vk::BlendOp::eAdd,
-                                                                          vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
+        auto colorBlendAttachment = vk::PipelineColorBlendAttachmentState(
+            VK_FALSE,
+            vk::BlendFactor::eOne, vk::BlendFactor::eZero, vk::BlendOp::eAdd,
+            vk::BlendFactor::eOne, vk::BlendFactor::eZero, vk::BlendOp::eAdd,
+            vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
 
         // vk::PipelineColorBlendStateCreateInfo(flags_, logicOpEnable_, logicOp_, attachmentCount_, pAttachments_, blendConstants_)
         auto colorBlending = vk::PipelineColorBlendStateCreateInfo({}, VK_FALSE, vk::LogicOp::eCopy, 1, &colorBlendAttachment, {0, 0, 0, 0});
 
         // vk::PipelineLayoutCreateInfo(flags_, setLayoutCount_, pSetLayouts_, pushConstantRangeCount_, pPushConstantRanges_)
-        auto pipelineLayoutInfo = vk::PipelineLayoutCreateInfo({}, 1, &*descriptorSetLayout, 0, nullptr);
-        pipelineLayout = device->createPipelineLayoutUnique(pipelineLayoutInfo);
+        pipelineLayout = device->createPipelineLayoutUnique({{}, 1, &*descriptorSetLayout, 0, nullptr});
 
-        auto pipelineInfo = vk::GraphicsPipelineCreateInfo({},               // flags_
-                                                           2,                // stageCount_
-                                                           shaderStages,     // pStages_
-                                                           &vertexInputInfo, // pVertexInputState_
-                                                           &inputAssembly,   // pInputAssemblyState_
-                                                           nullptr,          // pTessellationState_
-                                                           &viewportState,   // pViewportState_
-                                                           &rasterizer,      // pRasterizationState_
-                                                           &multisampling,   // pMultisampleState_
-                                                           nullptr,          // pDepthStencilState_
-                                                           &colorBlending,   // pColorBlendState_
-                                                           nullptr,          // pDynamicState_
-                                                           *pipelineLayout,  // layout_
-                                                           *renderPass,      // renderPass_
-                                                           0,                // subpass_
-                                                           nullptr,          // basePipelineHandle_
-                                                           -1);              // basePipelineIndex_
-
-        graphicsPipelines = device->createGraphicsPipelinesUnique(vk::PipelineCache(), pipelineInfo);
+        graphicsPipelines = device->createGraphicsPipelinesUnique(
+            vk::PipelineCache(),
+            {{
+                {},               // flags_
+                2,                // stageCount_
+                shaderStages,     // pStages_
+                &vertexInputInfo, // pVertexInputState_
+                &inputAssembly,   // pInputAssemblyState_
+                nullptr,          // pTessellationState_
+                &viewportState,   // pViewportState_
+                &rasterizer,      // pRasterizationState_
+                &multisampling,   // pMultisampleState_
+                nullptr,          // pDepthStencilState_
+                &colorBlending,   // pColorBlendState_
+                nullptr,          // pDynamicState_
+                *pipelineLayout,  // layout_
+                *renderPass,      // renderPass_
+                0,                // subpass_
+                nullptr,          // basePipelineHandle_
+                -1                // basePipelineIndex_
+            }});
     }
 
-    std::vector<char> readFile(const std::string &filename)
+    vk::UniqueShaderModule createShaderModule(const std::string &filename)
     {
         std::ifstream file(filename, std::ios::ate | std::ios::binary);
         if (!file.is_open()) {
@@ -527,14 +509,9 @@ class HelloVulkan
         file.seekg(0);
         file.read(buffer.data(), buffer.size());
         file.close();
-        return buffer;
-    }
 
-    vk::UniqueShaderModule createShaderModule(const std::vector<char> &code)
-    {
         // vk::ShaderModuleCreateInfo(flags_, codeSize_, pCode_)
-        auto createInfo = vk::ShaderModuleCreateInfo({}, code.size(), reinterpret_cast<const uint32_t *>(code.data()));
-        return device->createShaderModuleUnique(createInfo);
+        return device->createShaderModuleUnique({{}, buffer.size(), reinterpret_cast<const uint32_t *>(buffer.data())});
     }
 
     void createDescriptorSetLayout()
@@ -543,17 +520,17 @@ class HelloVulkan
         auto uboLayoutBinding = vk::DescriptorSetLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex, nullptr);
 
         // vk::DescriptorSetLayoutCreateInfo(flags_, bindingCount_, pBindings_)
-        auto layoutInfo = vk::DescriptorSetLayoutCreateInfo({}, 1, &uboLayoutBinding);
-        descriptorSetLayout = device->createDescriptorSetLayoutUnique(layoutInfo);
+        descriptorSetLayout = device->createDescriptorSetLayoutUnique({{}, 1, &uboLayoutBinding});
     }
 
     void createRenderPass()
     {
         // vk::AttachmentDescription(flags_, format_, samples_, loadOp_, storeOp_, stencilLoadOp_, stencilStoreOp_, initialLayout_, finalLayout_)
-        auto colorAttachment = vk::AttachmentDescription({}, swapChainImageFormat, vk::SampleCountFlagBits::e1,
-                                                         vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eStore,
-                                                         vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare,
-                                                         vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR);
+        auto colorAttachment = vk::AttachmentDescription(
+            {}, swapChainImageFormat, vk::SampleCountFlagBits::e1,
+            vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eStore,
+            vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare,
+            vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR);
 
         // vk::AttachmentReference(attachment_, layout_)
         auto colorAttachmentRef = vk::AttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal);
@@ -562,23 +539,21 @@ class HelloVulkan
         auto subpass = vk::SubpassDescription({}, vk::PipelineBindPoint::eGraphics, 0, nullptr, 1, &colorAttachmentRef, nullptr, nullptr, 0, nullptr);
 
         // vk::SubpassDependency(srcSubpass_, dstSubpass_, srcStageMask_, dstStageMask_, srcAccessMask_, dstAccessMask_, dependencyFlags_)
-        auto dependency = vk::SubpassDependency(VK_SUBPASS_EXTERNAL, 0,
-                                                vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eColorAttachmentOutput,
-                                                {}, vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+        auto dependency = vk::SubpassDependency(
+            VK_SUBPASS_EXTERNAL, 0,
+            vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eColorAttachmentOutput,
+            {}, vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
 
         // vk::RenderPassCreateInfo(flags_, attachmentCount_, pAttachments_, subpassCount_, pSubpasses_, dependencyCount_, pDependencies_)
-        auto renderPassInfo = vk::RenderPassCreateInfo({}, 1, &colorAttachment, 1, &subpass, 1, &dependency);
-        renderPass = device->createRenderPassUnique(renderPassInfo);
+        renderPass = device->createRenderPassUnique({{}, 1, &colorAttachment, 1, &subpass, 1, &dependency});
     }
 
     void createImageViews()
     {
         swapChainImageViews.resize(swapChainImages.size());
-
         for (size_t i = 0; i < swapChainImages.size(); i++) {
             // vk::ImageViewCreateInfo(flags_, image_, viewType_, format_, components_, vk::ImageSubresourceRange(aspectMask_, baseMipLevel_, levelCount_, baseArrayLayer_, layerCount_))
-            auto createInfo = vk::ImageViewCreateInfo({}, swapChainImages[i], vk::ImageViewType::e2D, swapChainImageFormat, {}, {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
-            swapChainImageViews[i] = device->createImageViewUnique(createInfo);
+            swapChainImageViews[i] = device->createImageViewUnique({{}, swapChainImages[i], vk::ImageViewType::e2D, swapChainImageFormat, {}, {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}});
         }
     }
 
@@ -596,7 +571,7 @@ class HelloVulkan
         }
 
         auto imageSharingMode = vk::SharingMode::eExclusive;
-        auto queueFamilyIndexCount = 0;
+        uint32_t queueFamilyIndexCount = 0;
         uint32_t *pQueueFamilyIndices = nullptr;
 
         QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
@@ -608,24 +583,26 @@ class HelloVulkan
             pQueueFamilyIndices = queueFamilyIndices;
         }
 
-        auto createInfo = vk::SwapchainCreateInfoKHR({},                                             // flags_
-                                                     *surface,                                       // surface_
-                                                     imageCount,                                     // minImageCount_
-                                                     surfaceFormat.format,                           // imageFormat_
-                                                     surfaceFormat.colorSpace,                       // imageColorSpace_
-                                                     extent,                                         // imageExtent_
-                                                     1,                                              // imageArrayLayers_
-                                                     vk::ImageUsageFlagBits::eColorAttachment,       // imageUsage_
-                                                     imageSharingMode,                               // imageSharingMode_
-                                                     queueFamilyIndexCount,                          // queueFamilyIndexCount_
-                                                     pQueueFamilyIndices,                            // pQueueFamilyIndices_
-                                                     swapChainSupport.capabilities.currentTransform, // preTransform_
-                                                     vk::CompositeAlphaFlagBitsKHR::eOpaque,         // compositeAlpha_
-                                                     presentMode,                                    // presentMode_
-                                                     VK_TRUE,                                        // clipped_
-                                                     nullptr);                                       // oldSwapchain_
+        swapChain = device->createSwapchainKHRUnique(
+            {
+                {},                                             // flags_
+                *surface,                                       // surface_
+                imageCount,                                     // minImageCount_
+                surfaceFormat.format,                           // imageFormat_
+                surfaceFormat.colorSpace,                       // imageColorSpace_
+                extent,                                         // imageExtent_
+                1,                                              // imageArrayLayers_
+                vk::ImageUsageFlagBits::eColorAttachment,       // imageUsage_
+                imageSharingMode,                               // imageSharingMode_
+                queueFamilyIndexCount,                          // queueFamilyIndexCount_
+                pQueueFamilyIndices,                            // pQueueFamilyIndices_
+                swapChainSupport.capabilities.currentTransform, // preTransform_
+                vk::CompositeAlphaFlagBitsKHR::eOpaque,         // compositeAlpha_
+                presentMode,                                    // presentMode_
+                VK_TRUE,                                        // clipped_
+                nullptr                                         // oldSwapchain_
+            });
 
-        swapChain = device->createSwapchainKHRUnique(createInfo);
         swapChainImages = device->getSwapchainImagesKHR(*swapChain);
         swapChainImageFormat = surfaceFormat.format;
         swapChainExtent = extent;
@@ -666,8 +643,8 @@ class HelloVulkan
             int width, height;
             glfwGetFramebufferSize(window, &width, &height);
 
-            return {std::clamp(static_cast<uint32_t>(width), capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
-                    std::clamp(static_cast<uint32_t>(height), capabilities.minImageExtent.height, capabilities.maxImageExtent.height)};
+            return {std::clamp((uint32_t)width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
+                    std::clamp((uint32_t)height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)};
         }
     }
 
@@ -685,9 +662,8 @@ class HelloVulkan
         }
 
         // vk::DeviceCreateInfo(flags_, queueCreateInfoCount_, pQueueCreateInfos_, enabledLayerCount_, ppEnabledLayerNames, enabledExtensionCount_, ppEnabledExtensionNames_, pEnabledFeatures_)
-        auto createInfo = vk::DeviceCreateInfo({}, queueCreateInfos.size(), queueCreateInfos.data(), 0, nullptr, deviceExtensions.size(), deviceExtensions.data(), nullptr);
+        device = physicalDevice.createDeviceUnique({{}, (uint32_t)queueCreateInfos.size(), queueCreateInfos.data(), 0, nullptr, (uint32_t)deviceExtensions.size(), deviceExtensions.data(), nullptr});
 
-        device = physicalDevice.createDeviceUnique(createInfo);
         graphicsQueue = device->getQueue(indices.graphicsFamily.value(), 0);
         presentQueue = device->getQueue(indices.presentFamily.value(), 0);
     }
@@ -697,13 +673,10 @@ class HelloVulkan
         for (const auto &device : instance->enumeratePhysicalDevices()) {
             if (isDeviceSuitable(device)) {
                 physicalDevice = device;
-                break;
+                return;
             }
         }
-
-        if (physicalDevice == vk::PhysicalDevice(nullptr)) {
-            throw std::runtime_error("failed to find a suitable GPU!");
-        }
+        throw std::runtime_error("failed to find a suitable GPU!");
     }
 
     bool isDeviceSuitable(vk::PhysicalDevice device)
@@ -766,16 +739,16 @@ class HelloVulkan
 
     void setupDebugMessenger()
     {
-        if (!enableValidationLayers) {
-            return;
+        if (enableValidationLayers) {
+            // vk::DebugUtilsMessengerCreateInfoEXT(flags_, messageSeverity_, messageType_, pfnUserCallback_)
+            debugMessenger = instance->createDebugUtilsMessengerEXTUnique(
+                {{},
+                 vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
+                 vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
+                 debugCallback},
+                nullptr,
+                dldy);
         }
-
-        auto messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
-        auto messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance;
-
-        // vk::DebugUtilsMessengerCreateInfoEXT(flags_, messageSeverity_, messageType_, pfnUserCallback_)
-        auto createInfo = vk::DebugUtilsMessengerCreateInfoEXT({}, messageSeverity, messageType, debugCallback);
-        debugMessenger = instance->createDebugUtilsMessengerEXTUnique(createInfo, nullptr, dldy);
     }
 
     void createInstance()
@@ -798,13 +771,9 @@ class HelloVulkan
         }
 
         auto extensions = getRequiredExtensions();
-        uint32_t enabledExtensionCount = extensions.size();
-        auto ppEnabledExtensionNames = extensions.data();
 
         // vk::InstanceCreateInfo(flags_, pApplicationInfo_, enabledLayerCount_, ppEnabledLayerNames_, enabledExtensionCount_, ppEnabledExtensionNames_)
-        auto createInfo = vk::InstanceCreateInfo({}, &appInfo, enabledLayerCount, ppEnabledLayerNames, enabledExtensionCount, ppEnabledExtensionNames);
-
-        instance = vk::createInstanceUnique(createInfo);
+        instance = vk::createInstanceUnique({{}, &appInfo, enabledLayerCount, ppEnabledLayerNames, (uint32_t)extensions.size(), extensions.data()});
         dldy.init(*instance);
     }
 
