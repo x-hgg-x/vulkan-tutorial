@@ -46,9 +46,12 @@ struct Vertex {
 };
 
 const std::vector<Vertex> vertices = {
-    {{0, -0.5}, {1, 0, 0}},
-    {{0.5, 0.5}, {0, 1, 0}},
-    {{-0.5, 0.5}, {0, 0, 1}}};
+    {{-0.5, -0.5}, {1, 0, 0}},
+    {{0.5, -0.5}, {0, 1, 0}},
+    {{0.5, 0.5}, {0, 0, 1}},
+    {{-0.5, 0.5}, {1, 1, 1}}};
+
+const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -63,7 +66,7 @@ struct SwapChainSupportDetails {
     std::vector<vk::PresentModeKHR> presentModes;
 };
 
-class HelloTriangleApplication
+class HelloVulkan
 {
   public:
     void run()
@@ -102,7 +105,9 @@ class HelloTriangleApplication
     vk::UniqueCommandPool commandPool;
 
     vk::UniqueDeviceMemory vertexBufferMemory;
+    vk::UniqueDeviceMemory indexBufferMemory;
     vk::UniqueBuffer vertexBuffer;
+    vk::UniqueBuffer indexBuffer;
 
     std::vector<vk::CommandBuffer> commandBuffers;
 
@@ -126,7 +131,7 @@ class HelloTriangleApplication
 
     static void framebufferResizeCallback(GLFWwindow *window, int width, int height)
     {
-        auto app = reinterpret_cast<HelloTriangleApplication *>(glfwGetWindowUserPointer(window));
+        auto app = reinterpret_cast<HelloVulkan *>(glfwGetWindowUserPointer(window));
         app->framebufferResized = true;
     }
 
@@ -144,6 +149,7 @@ class HelloTriangleApplication
         createFramebuffers();
         createCommandPool();
         createVertexBuffer();
+        createIndexBuffer();
         createCommandBuffers();
         createSyncObjects();
     }
@@ -252,7 +258,8 @@ class HelloTriangleApplication
             commandBuffers[i].beginRenderPass(&renderPassInfo, vk::SubpassContents::eInline);
             commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipelines[0]);
             commandBuffers[i].bindVertexBuffers(0, *vertexBuffer, {0});
-            commandBuffers[i].draw(vertices.size(), 1, 0, 0);
+            commandBuffers[i].bindIndexBuffer(*indexBuffer, 0, vk::IndexType::eUint16);
+            commandBuffers[i].drawIndexed(indices.size(), 1, 0, 0, 0);
             commandBuffers[i].endRenderPass();
             commandBuffers[i].end();
         }
@@ -260,7 +267,7 @@ class HelloTriangleApplication
 
     void createVertexBuffer()
     {
-        vk::DeviceSize bufferSize = sizeof(Vertex) * vertices.size();
+        vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
         vk::UniqueDeviceMemory stagingBufferMemory;
         vk::UniqueBuffer stagingBuffer;
 
@@ -272,6 +279,22 @@ class HelloTriangleApplication
 
         createUniqueBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, vertexBuffer, vertexBufferMemory);
         copyBuffer(*stagingBuffer, *vertexBuffer, bufferSize);
+    }
+
+    void createIndexBuffer()
+    {
+        vk::DeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+        vk::UniqueDeviceMemory stagingBufferMemory;
+        vk::UniqueBuffer stagingBuffer;
+
+        createUniqueBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
+
+        auto data = device->mapMemory(*stagingBufferMemory, 0, bufferSize, {});
+        memcpy(data, indices.data(), bufferSize);
+        device->unmapMemory(*stagingBufferMemory);
+
+        createUniqueBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, indexBuffer, indexBufferMemory);
+        copyBuffer(*stagingBuffer, *indexBuffer, bufferSize);
     }
 
     void createUniqueBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::UniqueBuffer &buffer, vk::UniqueDeviceMemory &bufferMemory)
@@ -558,7 +581,7 @@ class HelloTriangleApplication
         std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
         std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
-        float queuePriority = 1.0f;
+        float queuePriority = 1;
         for (uint32_t queueFamily : uniqueQueueFamilies) {
             // vk::DeviceQueueCreateInfo(flags_, queueFamilyIndex_, queueCount_, pQueuePriorities_)
             queueCreateInfos.push_back(vk::DeviceQueueCreateInfo({}, queueFamily, 1, &queuePriority));
@@ -661,7 +684,7 @@ class HelloTriangleApplication
     void createInstance()
     {
         // vk::ApplicationInfo(pApplicationName_, applicationVersion_, pEngineName_, engineVersion_, apiVersion_)
-        auto appInfo = vk::ApplicationInfo("Hello Triangle", VK_MAKE_VERSION(1, 0, 0), "No Engine", VK_MAKE_VERSION(1, 0, 0), VK_API_VERSION_1_1);
+        auto appInfo = vk::ApplicationInfo("Hello Vulkan", VK_MAKE_VERSION(1, 0, 0), "No Engine", VK_MAKE_VERSION(1, 0, 0), VK_API_VERSION_1_1);
 
         if (enableValidationLayers && !checkValidationLayerSupport()) {
             throw std::runtime_error("validation layers requested, but not available!");
@@ -720,7 +743,7 @@ class HelloTriangleApplication
 
 int main()
 {
-    HelloTriangleApplication app;
+    HelloVulkan app;
 
     try {
         app.run();
