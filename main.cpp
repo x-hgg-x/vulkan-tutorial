@@ -58,9 +58,9 @@ const std::vector<Vertex> vertices = {
 const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 
 struct UniformBufferObject {
-    glm::mat4 model;
-    glm::mat4 view;
-    glm::mat4 proj;
+    alignas(16) glm::mat4 model;
+    alignas(16) glm::mat4 view;
+    alignas(16) glm::mat4 proj;
 };
 
 struct QueueFamilyIndices {
@@ -123,6 +123,9 @@ class HelloVulkan
     std::vector<vk::UniqueDeviceMemory> uniformBuffersMemory;
     std::vector<vk::UniqueBuffer> uniformBuffers;
 
+    vk::UniqueDescriptorPool descriptorPool;
+    std::vector<vk::DescriptorSet> descriptorSets;
+
     std::vector<vk::CommandBuffer> commandBuffers;
 
     std::vector<vk::UniqueSemaphore> imageAvailableSemaphores;
@@ -166,6 +169,8 @@ class HelloVulkan
         createVertexBuffer();
         createIndexBuffer();
         createUniformBuffers();
+        createDescriptorPool();
+        createDescriptorSets();
         createCommandBuffers();
         createSyncObjects();
     }
@@ -206,6 +211,8 @@ class HelloVulkan
         createGraphicsPipeline();
         createFramebuffers();
         createUniformBuffers();
+        createDescriptorPool();
+        createDescriptorSets();
         createCommandBuffers();
     }
 
@@ -229,7 +236,7 @@ class HelloVulkan
 
         updateUniformBuffer(imageIndex);
 
-        // vk::SubmitInfo(waitSemaphoreCount_ pWaitSemaphores_, pWaitDstStageMask_, commandBufferCount_, pCommandBuffers_, signalSemaphoreCount_, pSignalSemaphores_)
+        // vk::SubmitInfo(waitSemaphoreCount_, pWaitSemaphores_, pWaitDstStageMask_, commandBufferCount_, pCommandBuffers_, signalSemaphoreCount_, pSignalSemaphores_)
         auto submitInfo = vk::SubmitInfo(1, &*imageAvailableSemaphores[currentFrame], waitStages, 1, &commandBuffers[imageIndex], 1, &*renderFinishedSemaphores[currentFrame]);
         graphicsQueue.submit(submitInfo, *inFlightFences[currentFrame]);
 
@@ -297,10 +304,38 @@ class HelloVulkan
             commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipelines[0]);
             commandBuffers[i].bindVertexBuffers(0, *vertexBuffer, {0});
             commandBuffers[i].bindIndexBuffer(*indexBuffer, 0, vk::IndexType::eUint16);
+            commandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 0, descriptorSets[i], {});
             commandBuffers[i].drawIndexed(indices.size(), 1, 0, 0, 0);
             commandBuffers[i].endRenderPass();
             commandBuffers[i].end();
         }
+    }
+
+    void createDescriptorSets()
+    {
+        std::vector<vk::DescriptorSetLayout> layouts(swapChainImages.size(), *descriptorSetLayout);
+
+        // vk::DescriptorSetAllocateInfo(descriptorPool_, descriptorSetCount_, pSetLayouts_)
+        auto allocInfo = vk::DescriptorSetAllocateInfo(*descriptorPool, swapChainImages.size(), layouts.data());
+        descriptorSets = device->allocateDescriptorSets(allocInfo);
+
+        for (size_t i = 0; i < swapChainImages.size(); i++) {
+            // vk::DescriptorBufferInfo(buffer_, offset_, range_)
+            auto bufferInfo = vk::DescriptorBufferInfo(*uniformBuffers[i], 0, sizeof(UniformBufferObject));
+
+            // vk::WriteDescriptorSet(dstSet_, dstBinding_, dstArrayElement_, descriptorCount_, descriptorType_, pImageInfo_, pBufferInfo_, pTexelBufferView_)
+            auto descriptorWrite = vk::WriteDescriptorSet(descriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &bufferInfo, nullptr);
+            device->updateDescriptorSets(descriptorWrite, {});
+        }
+    }
+
+    void createDescriptorPool()
+    {
+        // vk::DescriptorPoolSize(type_, descriptorCount_)
+        auto poolSize = vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, swapChainImages.size());
+        // vk::DescriptorPoolCreateInfo(flags_, maxSets_, poolSizeCount_, pPoolSizes_)
+        auto poolInfo = vk::DescriptorPoolCreateInfo({}, swapChainImages.size(), 1, &poolSize);
+        descriptorPool = device->createDescriptorPoolUnique(poolInfo);
     }
 
     void createVertexBuffer()
@@ -378,7 +413,7 @@ class HelloVulkan
         vertexcommandBuffers[0]->copyBuffer(srcBuffer, dstBuffer, copyRegion);
         vertexcommandBuffers[0]->end();
 
-        // vk::SubmitInfo(waitSemaphoreCount_ pWaitSemaphores_, pWaitDstStageMask_, commandBufferCount_, pCommandBuffers_, signalSemaphoreCount_, pSignalSemaphores_)
+        // vk::SubmitInfo(waitSemaphoreCount_, pWaitSemaphores_, pWaitDstStageMask_, commandBufferCount_, pCommandBuffers_, signalSemaphoreCount_, pSignalSemaphores_)
         auto submitInfo = vk::SubmitInfo(0, nullptr, nullptr, 1, &*vertexcommandBuffers[0], 0, nullptr);
         graphicsQueue.submit(submitInfo, nullptr);
         graphicsQueue.waitIdle();
@@ -443,7 +478,7 @@ class HelloVulkan
         auto viewportState = vk::PipelineViewportStateCreateInfo({}, 1, &viewport, 1, &scissor);
 
         // vk::PipelineRasterizationStateCreateInfo(flags_, depthClampEnable_, rasterizerDiscardEnable_, polygonMode_, cullMode_, frontFace_, depthBiasEnable_, depthBiasConstantFactor_, depthBiasClamp_, depthBiasSlopeFactor_, lineWidth_)
-        auto rasterizer = vk::PipelineRasterizationStateCreateInfo({}, VK_FALSE, VK_FALSE, vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack, vk::FrontFace::eClockwise, VK_FALSE, 0, 0, 0, 1);
+        auto rasterizer = vk::PipelineRasterizationStateCreateInfo({}, VK_FALSE, VK_FALSE, vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise, VK_FALSE, 0, 0, 0, 1);
 
         auto multisampling = vk::PipelineMultisampleStateCreateInfo();
 
