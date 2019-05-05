@@ -1,9 +1,13 @@
 #include <vulkan/vulkan.hpp>
 
 #include <GLFW/glfw3.h>
+
+#define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
@@ -53,6 +57,12 @@ const std::vector<Vertex> vertices = {
 
 const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 
+struct UniformBufferObject {
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
+};
+
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
     std::optional<uint32_t> presentFamily;
@@ -99,6 +109,7 @@ class HelloVulkan
     std::vector<vk::UniqueFramebuffer> swapChainFramebuffers;
 
     vk::UniqueRenderPass renderPass;
+    vk::UniqueDescriptorSetLayout descriptorSetLayout;
     vk::UniquePipelineLayout pipelineLayout;
     std::vector<vk::UniquePipeline> graphicsPipelines;
 
@@ -108,6 +119,9 @@ class HelloVulkan
     vk::UniqueDeviceMemory indexBufferMemory;
     vk::UniqueBuffer vertexBuffer;
     vk::UniqueBuffer indexBuffer;
+
+    std::vector<vk::UniqueDeviceMemory> uniformBuffersMemory;
+    std::vector<vk::UniqueBuffer> uniformBuffers;
 
     std::vector<vk::CommandBuffer> commandBuffers;
 
@@ -145,11 +159,13 @@ class HelloVulkan
         createSwapChain();
         createImageViews();
         createRenderPass();
+        createDescriptorSetLayout();
         createGraphicsPipeline();
         createFramebuffers();
         createCommandPool();
         createVertexBuffer();
         createIndexBuffer();
+        createUniformBuffers();
         createCommandBuffers();
         createSyncObjects();
     }
@@ -189,6 +205,7 @@ class HelloVulkan
         createRenderPass();
         createGraphicsPipeline();
         createFramebuffers();
+        createUniformBuffers();
         createCommandBuffers();
     }
 
@@ -210,6 +227,8 @@ class HelloVulkan
 
         vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 
+        updateUniformBuffer(imageIndex);
+
         // vk::SubmitInfo(waitSemaphoreCount_ pWaitSemaphores_, pWaitDstStageMask_, commandBufferCount_, pCommandBuffers_, signalSemaphoreCount_, pSignalSemaphores_)
         auto submitInfo = vk::SubmitInfo(1, &*imageAvailableSemaphores[currentFrame], waitStages, 1, &commandBuffers[imageIndex], 1, &*renderFinishedSemaphores[currentFrame]);
         graphicsQueue.submit(submitInfo, *inFlightFences[currentFrame]);
@@ -225,6 +244,25 @@ class HelloVulkan
         }
 
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+    }
+
+    void updateUniformBuffer(uint32_t currentImage)
+    {
+        static auto startTime = std::chrono::high_resolution_clock::now();
+
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+        UniformBufferObject ubo = {
+            glm::rotate(glm::mat4(1), time * glm::radians(90.0f), glm::vec3(0, 0, 1)),
+            glm::lookAt(glm::vec3(2, 2, 2.), glm::vec3(0, 0, 0), glm::vec3(0, 0, 1)),
+            glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f)};
+
+        ubo.proj[1][1] *= -1;
+
+        auto data = device->mapMemory(*uniformBuffersMemory[currentImage], 0, sizeof(ubo), {});
+        memcpy(data, &ubo, sizeof(ubo));
+        device->unmapMemory(*uniformBuffersMemory[currentImage]);
     }
 
     void createSyncObjects()
@@ -295,6 +333,18 @@ class HelloVulkan
 
         createUniqueBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, indexBuffer, indexBufferMemory);
         copyBuffer(*stagingBuffer, *indexBuffer, bufferSize);
+    }
+
+    void createUniformBuffers()
+    {
+        vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+
+        uniformBuffers.resize(swapChainImages.size());
+        uniformBuffersMemory.resize(swapChainImages.size());
+
+        for (size_t i = 0; i < swapChainImages.size(); i++) {
+            createUniqueBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, uniformBuffers[i], uniformBuffersMemory[i]);
+        }
     }
 
     void createUniqueBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::UniqueBuffer &buffer, vk::UniqueDeviceMemory &bufferMemory)
@@ -406,7 +456,9 @@ class HelloVulkan
         // vk::PipelineColorBlendStateCreateInfo(flags_, logicOpEnable_, logicOp_, attachmentCount_, pAttachments_, blendConstants_)
         auto colorBlending = vk::PipelineColorBlendStateCreateInfo({}, VK_FALSE, vk::LogicOp::eCopy, 1, &colorBlendAttachment, {0, 0, 0, 0});
 
-        pipelineLayout = device->createPipelineLayoutUnique({});
+        // vk::PipelineLayoutCreateInfo(flags_, setLayoutCount_, pSetLayouts_, pushConstantRangeCount_, pPushConstantRanges_)
+        auto pipelineLayoutInfo = vk::PipelineLayoutCreateInfo({}, 1, &*descriptorSetLayout, 0, nullptr);
+        pipelineLayout = device->createPipelineLayoutUnique(pipelineLayoutInfo);
 
         auto pipelineInfo = vk::GraphicsPipelineCreateInfo({},               // flags_
                                                            2,                // stageCount_
@@ -448,6 +500,16 @@ class HelloVulkan
         // vk::ShaderModuleCreateInfo(flags_, codeSize_, pCode_)
         auto createInfo = vk::ShaderModuleCreateInfo({}, code.size(), reinterpret_cast<const uint32_t *>(code.data()));
         return device->createShaderModuleUnique(createInfo);
+    }
+
+    void createDescriptorSetLayout()
+    {
+        // vk::DescriptorSetLayoutBinding(binding_, descriptorType_, descriptorCount_, stageFlags_, pImmutableSamplers_)
+        auto uboLayoutBinding = vk::DescriptorSetLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex, nullptr);
+
+        // vk::DescriptorSetLayoutCreateInfo(flags_, bindingCount_, pBindings_)
+        auto layoutInfo = vk::DescriptorSetLayoutCreateInfo({}, 1, &uboLayoutBinding);
+        descriptorSetLayout = device->createDescriptorSetLayoutUnique(layoutInfo);
     }
 
     void createRenderPass()
