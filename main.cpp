@@ -6,6 +6,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
@@ -115,8 +118,10 @@ class HelloVulkan
 
     vk::UniqueCommandPool commandPool;
 
+    vk::UniqueDeviceMemory textureImageMemory;
     vk::UniqueDeviceMemory vertexBufferMemory;
     vk::UniqueDeviceMemory indexBufferMemory;
+    vk::UniqueImage textureImage;
     vk::UniqueBuffer vertexBuffer;
     vk::UniqueBuffer indexBuffer;
 
@@ -165,6 +170,7 @@ class HelloVulkan
         createGraphicsPipeline();
         createFramebuffers();
         createCommandPool();
+        createTextureImage();
         createVertexBuffer();
         createIndexBuffer();
         createUniformBuffers();
@@ -390,19 +396,11 @@ class HelloVulkan
 
     void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size)
     {
-        // vk::CommandBufferAllocateInfo(commandPool_, level_, commandBufferCount_)
-        auto vertexcommandBuffers = device->allocateCommandBuffersUnique({*commandPool, vk::CommandBufferLevel::ePrimary, 1});
-
-        // vk::CommandBufferBeginInfo(flags_, pInheritanceInfo_)
-        vertexcommandBuffers[0]->begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit, nullptr});
+        auto uniqueCommandBuffers = beginSingleTimeCommands();
 
         // vk::BufferCopy(srcOffset_, dstOffset_, size_)
-        vertexcommandBuffers[0]->copyBuffer(srcBuffer, dstBuffer, {{0, 0, size}});
-        vertexcommandBuffers[0]->end();
-
-        // vk::SubmitInfo(waitSemaphoreCount_, pWaitSemaphores_, pWaitDstStageMask_, commandBufferCount_, pCommandBuffers_, signalSemaphoreCount_, pSignalSemaphores_)
-        graphicsQueue.submit({{0, nullptr, nullptr, 1, &*vertexcommandBuffers[0], 0, nullptr}}, nullptr);
-        graphicsQueue.waitIdle();
+        uniqueCommandBuffers[0]->copyBuffer(srcBuffer, dstBuffer, {{0, 0, size}});
+        endSingleTimeCommands(uniqueCommandBuffers);
     }
 
     uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties)
@@ -414,6 +412,100 @@ class HelloVulkan
             }
         }
         throw std::runtime_error("failed to find suitable memory type!");
+    }
+
+    void createTextureImage()
+    {
+        int texWidth, texHeight, texChannels;
+        stbi_uc *pixels = stbi_load("textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+        if (!pixels) {
+            throw std::runtime_error("failed to load texture image!");
+        }
+
+        vk::DeviceSize imageSize = texWidth * texHeight * STBI_rgb_alpha;
+        vk::UniqueDeviceMemory stagingBufferMemory;
+        vk::UniqueBuffer stagingBuffer;
+
+        createUniqueBuffer(imageSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
+
+        auto data = device->mapMemory(*stagingBufferMemory, 0, imageSize, {});
+        memcpy(data, pixels, imageSize);
+        device->unmapMemory(*stagingBufferMemory);
+        stbi_image_free(pixels);
+
+        createUniqueImage(texWidth, texHeight, vk::Format::eR8G8B8A8Unorm, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, textureImageMemory);
+        transitionImageLayout(*textureImage, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+        copyBufferToImage(*stagingBuffer, *textureImage, texWidth, texHeight);
+        transitionImageLayout(*textureImage, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+    }
+
+    void createUniqueImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::UniqueImage &image, vk::UniqueDeviceMemory &imageMemory)
+    {
+        // vk::ImageCreateInfo(flags_, imageType_, format_, vk::Extent3D(width_, height_, depth_), mipLevels_, arrayLayers_, samples_, tiling_, usage_, sharingMode_, queueFamilyIndexCount_, pQueueFamilyIndices_, initialLayout_);
+        image = device->createImageUnique({{}, vk::ImageType::e2D, format, {width, height, 1U}, 1, 1, vk::SampleCountFlagBits::e1, tiling, usage, vk::SharingMode::eExclusive, 0, nullptr, vk::ImageLayout::eUndefined});
+
+        auto memRequirements = device->getImageMemoryRequirements(*image);
+        uint32_t memoryType = findMemoryType(memRequirements.memoryTypeBits, properties);
+
+        // vk::MemoryAllocateInfo(allocationSize_, memoryTypeIndex_)
+        imageMemory = device->allocateMemoryUnique({memRequirements.size, memoryType});
+        device->bindImageMemory(*image, *imageMemory, 0);
+    }
+
+    void transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
+    {
+        auto uniqueCommandBuffers = beginSingleTimeCommands();
+
+        vk::PipelineStageFlags sourceStage;
+        vk::PipelineStageFlags destinationStage;
+        vk::AccessFlags srcAccessMask;
+        vk::AccessFlags dstAccessMask;
+
+        if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal) {
+            srcAccessMask = {};
+            dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+            sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+            destinationStage = vk::PipelineStageFlagBits::eTransfer;
+        } else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+            srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+            dstAccessMask = vk::AccessFlagBits::eShaderRead;
+            sourceStage = vk::PipelineStageFlagBits::eTransfer;
+            destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+        } else {
+            throw std::invalid_argument("unsupported layout transition!");
+        }
+
+        // vk::ImageMemoryBarrier(srcAccessMask_, dstAccessMask_, oldLayout_, newLayout_, srcQueueFamilyIndex_, dstQueueFamilyIndex_, image_, vk::ImageSubresourceRange(aspectMask_, baseMipLevel_, levelCount_, baseArrayLayer_, layerCount_))
+        uniqueCommandBuffers[0]->pipelineBarrier(sourceStage, destinationStage, {}, {}, {}, {{srcAccessMask, dstAccessMask, oldLayout, newLayout, VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, image, {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}}});
+        endSingleTimeCommands(uniqueCommandBuffers);
+    }
+
+    void copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height)
+    {
+        auto uniqueCommandBuffers = beginSingleTimeCommands();
+
+        // vk::BufferImageCopy(bufferOffset_, bufferRowLength_, bufferImageHeight_, imageSubresource_, imageOffset_, imageExtent_)
+        uniqueCommandBuffers[0]->copyBufferToImage(buffer, image, vk::ImageLayout::eTransferDstOptimal, {{0, 0, 0, {vk::ImageAspectFlagBits::eColor, 0, 0, 1}, {0, 0, 0}, {width, height, 1}}});
+        endSingleTimeCommands(uniqueCommandBuffers);
+    }
+
+    std::vector<vk::UniqueCommandBuffer> beginSingleTimeCommands()
+    {
+        // vk::CommandBufferAllocateInfo(commandPool_, level_, commandBufferCount_)
+        auto uniqueCommandBuffers = device->allocateCommandBuffersUnique({*commandPool, vk::CommandBufferLevel::ePrimary, 1});
+
+        // vk::CommandBufferBeginInfo(flags_, pInheritanceInfo_)
+        uniqueCommandBuffers[0]->begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit, nullptr});
+        return uniqueCommandBuffers;
+    }
+
+    void endSingleTimeCommands(std::vector<vk::UniqueCommandBuffer> &uniqueCommandBuffers)
+    {
+        uniqueCommandBuffers[0]->end();
+
+        // vk::SubmitInfo(waitSemaphoreCount_, pWaitSemaphores_, pWaitDstStageMask_, commandBufferCount_, pCommandBuffers_, signalSemaphoreCount_, pSignalSemaphores_)
+        graphicsQueue.submit({{0, nullptr, nullptr, 1, &*uniqueCommandBuffers[0], 0, nullptr}}, nullptr);
+        graphicsQueue.waitIdle();
     }
 
     void createCommandPool()

@@ -14,5 +14,7 @@ set(SOURCES main.cpp)
 file(GLOB SHADERS "${CMAKE_SOURCE_DIR}/shaders/*.spv")
 file(COPY ${SHADERS} DESTINATION "${CMAKE_BINARY_DIR}/shaders")
 
+file(COPY "${CMAKE_SOURCE_DIR}/textures" DESTINATION "${CMAKE_BINARY_DIR}")
+
 add_executable(vktest ${SOURCES})
 target_link_libraries(vktest glfw Vulkan::Vulkan)
