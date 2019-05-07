@@ -125,6 +125,9 @@ class HelloVulkan
     vk::UniqueBuffer vertexBuffer;
     vk::UniqueBuffer indexBuffer;
 
+    vk::UniqueImageView textureImageView;
+    vk::UniqueSampler textureSampler;
+
     std::vector<vk::UniqueDeviceMemory> uniformBuffersMemory;
     std::vector<vk::UniqueBuffer> uniformBuffers;
 
@@ -171,6 +174,8 @@ class HelloVulkan
         createFramebuffers();
         createCommandPool();
         createTextureImage();
+        createTextureImageView();
+        createTextureSampler();
         createVertexBuffer();
         createIndexBuffer();
         createUniformBuffers();
@@ -414,6 +419,34 @@ class HelloVulkan
         throw std::runtime_error("failed to find suitable memory type!");
     }
 
+    void createTextureSampler()
+    {
+        textureSampler = device->createSamplerUnique(
+            {
+                {},                               // flags_
+                vk::Filter::eLinear,              // magFilter_
+                vk::Filter::eLinear,              // minFilter_
+                vk::SamplerMipmapMode::eLinear,   // mipmapMode_
+                vk::SamplerAddressMode::eRepeat,  // addressModeU_
+                vk::SamplerAddressMode::eRepeat,  // addressModeV_
+                vk::SamplerAddressMode::eRepeat,  // addressModeW_
+                0,                                // mipLodBias_
+                VK_TRUE,                          // anisotropyEnable_
+                16,                               // maxAnisotropy_
+                VK_FALSE,                         // compareEnable_
+                vk::CompareOp::eAlways,           // compareOp_
+                0,                                // minLod_
+                0,                                // maxLod_
+                vk::BorderColor::eIntOpaqueBlack, // borderColor_
+                VK_FALSE                          // unnormalizedCoordinates_
+            });
+    }
+
+    void createTextureImageView()
+    {
+        textureImageView = createUniqueImageView(*textureImage, vk::Format::eR8G8B8A8Unorm);
+    }
+
     void createTextureImage()
     {
         int texWidth, texHeight, texChannels;
@@ -644,9 +677,14 @@ class HelloVulkan
     {
         swapChainImageViews.resize(swapChainImages.size());
         for (size_t i = 0; i < swapChainImages.size(); i++) {
-            // vk::ImageViewCreateInfo(flags_, image_, viewType_, format_, components_, vk::ImageSubresourceRange(aspectMask_, baseMipLevel_, levelCount_, baseArrayLayer_, layerCount_))
-            swapChainImageViews[i] = device->createImageViewUnique({{}, swapChainImages[i], vk::ImageViewType::e2D, swapChainImageFormat, {}, {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}});
+            swapChainImageViews[i] = createUniqueImageView(swapChainImages[i], swapChainImageFormat);
         }
+    }
+
+    vk::UniqueImageView createUniqueImageView(vk::Image image, vk::Format format)
+    {
+        // vk::ImageViewCreateInfo(flags_, image_, viewType_, format_, components_, vk::ImageSubresourceRange(aspectMask_, baseMipLevel_, levelCount_, baseArrayLayer_, layerCount_))
+        return device->createImageViewUnique({{}, image, vk::ImageViewType::e2D, format, {}, {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}});
     }
 
     void createSwapChain()
@@ -753,8 +791,10 @@ class HelloVulkan
             queueCreateInfos.push_back(vk::DeviceQueueCreateInfo({}, queueFamily, 1, &queuePriority));
         }
 
+        vk::PhysicalDeviceFeatures deviceFeatures = vk::PhysicalDeviceFeatures().setSamplerAnisotropy(VK_TRUE);
+
         // vk::DeviceCreateInfo(flags_, queueCreateInfoCount_, pQueueCreateInfos_, enabledLayerCount_, ppEnabledLayerNames, enabledExtensionCount_, ppEnabledExtensionNames_, pEnabledFeatures_)
-        device = physicalDevice.createDeviceUnique({{}, (uint32_t)queueCreateInfos.size(), queueCreateInfos.data(), 0, nullptr, (uint32_t)deviceExtensions.size(), deviceExtensions.data(), nullptr});
+        device = physicalDevice.createDeviceUnique({{}, (uint32_t)queueCreateInfos.size(), queueCreateInfos.data(), 0, nullptr, (uint32_t)deviceExtensions.size(), deviceExtensions.data(), &deviceFeatures});
 
         graphicsQueue = device->getQueue(indices.graphicsFamily.value(), 0);
         presentQueue = device->getQueue(indices.presentFamily.value(), 0);
@@ -775,7 +815,7 @@ class HelloVulkan
     {
         if (findQueueFamilies(device).isComplete() && checkDeviceExtensionSupport(device)) {
             SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
-            return !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+            return !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty() && device.getFeatures().samplerAnisotropy;
         }
         return false;
     }
