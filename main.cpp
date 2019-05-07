@@ -37,6 +37,7 @@ const bool enableValidationLayers = true;
 struct Vertex {
     glm::vec2 pos;
     glm::vec3 color;
+    glm::vec2 texCoord;
 
     static vk::VertexInputBindingDescription getBindingDescription()
     {
@@ -44,19 +45,20 @@ struct Vertex {
         return {0, sizeof(Vertex), vk::VertexInputRate::eVertex};
     }
 
-    static std::array<vk::VertexInputAttributeDescription, 2> getAttributeDescriptions()
+    static std::vector<vk::VertexInputAttributeDescription> getAttributeDescriptions()
     {
         // vk::VertexInputAttributeDescription(location_, binding_, format_, offset_)
-        return {{{0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, pos)},
-                 {1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)}}};
+        return {{0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, pos)},
+                {1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)},
+                {2, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord)}};
     }
 };
 
 const std::vector<Vertex> vertices = {
-    {{-0.5, -0.5}, {1, 0, 0}},
-    {{0.5, -0.5}, {0, 1, 0}},
-    {{0.5, 0.5}, {0, 0, 1}},
-    {{-0.5, 0.5}, {1, 1, 1}}};
+    {{-0.5, -0.5}, {1, 0, 0}, {1, 0}},
+    {{0.5, -0.5}, {0, 1, 0}, {0, 0}},
+    {{0.5, 0.5}, {0, 0, 1}, {0, 1}},
+    {{-0.5, 0.5}, {1, 1, 1}, {1, 1}}};
 
 const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 
@@ -242,12 +244,12 @@ class HelloVulkan
 
         device->resetFences({*inFlightFences[currentFrame]});
 
-        vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
-
         updateUniformBuffer(imageIndex);
 
+        vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+
         // vk::SubmitInfo(waitSemaphoreCount_, pWaitSemaphores_, pWaitDstStageMask_, commandBufferCount_, pCommandBuffers_, signalSemaphoreCount_, pSignalSemaphores_)
-        graphicsQueue.submit({{1, &*imageAvailableSemaphores[currentFrame], waitStages, 1, &commandBuffers[imageIndex], 1, &*renderFinishedSemaphores[currentFrame]}}, *inFlightFences[currentFrame]);
+        graphicsQueue.submit({{1, &*imageAvailableSemaphores[currentFrame], &waitStage, 1, &commandBuffers[imageIndex], 1, &*renderFinishedSemaphores[currentFrame]}}, *inFlightFences[currentFrame]);
 
         auto presentInfo = vk::PresentInfoKHR(1, &*renderFinishedSemaphores[currentFrame], 1, &*swapChain, &imageIndex, nullptr);
         result = presentQueue.presentKHR(&presentInfo);
@@ -328,18 +330,26 @@ class HelloVulkan
         for (size_t i = 0; i < swapChainImages.size(); i++) {
             // vk::DescriptorBufferInfo(buffer_, offset_, range_)
             auto bufferInfo = vk::DescriptorBufferInfo(*uniformBuffers[i], 0, sizeof(UniformBufferObject));
+            // vk::DescriptorImageInfo(sampler_, imageView_, imageLayout_)
+            auto imageInfo = vk::DescriptorImageInfo(*textureSampler, *textureImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
 
             // vk::WriteDescriptorSet(dstSet_, dstBinding_, dstArrayElement_, descriptorCount_, descriptorType_, pImageInfo_, pBufferInfo_, pTexelBufferView_)
-            device->updateDescriptorSets({{descriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &bufferInfo, nullptr}}, {});
+            device->updateDescriptorSets(
+                {{descriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &bufferInfo, nullptr},
+                 {descriptorSets[i], 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &imageInfo, nullptr, nullptr}},
+                {});
         }
     }
 
     void createDescriptorPool()
     {
         // vk::DescriptorPoolSize(type_, descriptorCount_)
-        auto poolSize = vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, swapChainImages.size());
+        std::vector<vk::DescriptorPoolSize> poolSizes = {
+            {vk::DescriptorType::eUniformBuffer, (uint32_t)swapChainImages.size()},
+            {vk::DescriptorType::eCombinedImageSampler, (uint32_t)swapChainImages.size()}};
+
         // vk::DescriptorPoolCreateInfo(flags_, maxSets_, poolSizeCount_, pPoolSizes_)
-        descriptorPool = device->createDescriptorPoolUnique({{}, (uint32_t)swapChainImages.size(), 1, &poolSize});
+        descriptorPool = device->createDescriptorPoolUnique({{}, (uint32_t)swapChainImages.size(), (uint32_t)poolSizes.size(), poolSizes.data()});
     }
 
     void createVertexBuffer()
@@ -562,7 +572,7 @@ class HelloVulkan
         vk::UniqueShaderModule fragShaderModule = createShaderModule("shaders/shader.frag.spv");
 
         // vk::PipelineShaderStageCreateInfo(flags_, stage_, module_, pName_, pSpecializationInfo_)
-        vk::PipelineShaderStageCreateInfo shaderStages[] = {
+        std::vector<vk::PipelineShaderStageCreateInfo> shaderStages = {
             {{}, vk::ShaderStageFlagBits::eVertex, *vertShaderModule, "main", nullptr},
             {{}, vk::ShaderStageFlagBits::eFragment, *fragShaderModule, "main", nullptr}};
 
@@ -603,23 +613,23 @@ class HelloVulkan
         graphicsPipelines = device->createGraphicsPipelinesUnique(
             vk::PipelineCache(),
             {{
-                {},               // flags_
-                2,                // stageCount_
-                shaderStages,     // pStages_
-                &vertexInputInfo, // pVertexInputState_
-                &inputAssembly,   // pInputAssemblyState_
-                nullptr,          // pTessellationState_
-                &viewportState,   // pViewportState_
-                &rasterizer,      // pRasterizationState_
-                &multisampling,   // pMultisampleState_
-                nullptr,          // pDepthStencilState_
-                &colorBlending,   // pColorBlendState_
-                nullptr,          // pDynamicState_
-                *pipelineLayout,  // layout_
-                *renderPass,      // renderPass_
-                0,                // subpass_
-                nullptr,          // basePipelineHandle_
-                -1                // basePipelineIndex_
+                {},                            // flags_
+                (uint32_t)shaderStages.size(), // stageCount_
+                shaderStages.data(),           // pStages_
+                &vertexInputInfo,              // pVertexInputState_
+                &inputAssembly,                // pInputAssemblyState_
+                nullptr,                       // pTessellationState_
+                &viewportState,                // pViewportState_
+                &rasterizer,                   // pRasterizationState_
+                &multisampling,                // pMultisampleState_
+                nullptr,                       // pDepthStencilState_
+                &colorBlending,                // pColorBlendState_
+                nullptr,                       // pDynamicState_
+                *pipelineLayout,               // layout_
+                *renderPass,                   // renderPass_
+                0,                             // subpass_
+                nullptr,                       // basePipelineHandle_
+                -1                             // basePipelineIndex_
             }});
     }
 
@@ -642,10 +652,12 @@ class HelloVulkan
     void createDescriptorSetLayout()
     {
         // vk::DescriptorSetLayoutBinding(binding_, descriptorType_, descriptorCount_, stageFlags_, pImmutableSamplers_)
-        auto uboLayoutBinding = vk::DescriptorSetLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex, nullptr);
+        std::vector<vk::DescriptorSetLayoutBinding> bindings = {
+            {0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex, nullptr},
+            {1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment, nullptr}};
 
         // vk::DescriptorSetLayoutCreateInfo(flags_, bindingCount_, pBindings_)
-        descriptorSetLayout = device->createDescriptorSetLayoutUnique({{}, 1, &uboLayoutBinding});
+        descriptorSetLayout = device->createDescriptorSetLayoutUnique({{}, (uint32_t)bindings.size(), bindings.data()});
     }
 
     void createRenderPass()
