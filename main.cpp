@@ -117,6 +117,7 @@ class HelloVulkan
     vk::UniqueSurfaceKHR surface;
 
     vk::PhysicalDevice physicalDevice;
+    vk::SampleCountFlagBits msaaSamples = vk::SampleCountFlagBits::e1;
     vk::UniqueDevice device;
 
     vk::Queue graphicsQueue;
@@ -141,16 +142,19 @@ class HelloVulkan
 
     uint32_t mipLevels;
 
+    vk::UniqueDeviceMemory colorImageMemory;
     vk::UniqueDeviceMemory depthImageMemory;
     vk::UniqueDeviceMemory textureImageMemory;
     vk::UniqueDeviceMemory vertexBufferMemory;
     vk::UniqueDeviceMemory indexBufferMemory;
 
+    vk::UniqueImage colorImage;
     vk::UniqueImage depthImage;
     vk::UniqueImage textureImage;
     vk::UniqueBuffer vertexBuffer;
     vk::UniqueBuffer indexBuffer;
 
+    vk::UniqueImageView colorImageView;
     vk::UniqueImageView depthImageView;
     vk::UniqueImageView textureImageView;
     vk::UniqueSampler textureSampler;
@@ -199,6 +203,7 @@ class HelloVulkan
         createDescriptorSetLayout();
         createGraphicsPipeline();
         createCommandPool();
+        createColorResources();
         createDepthResources();
         createFramebuffers();
         createTextureImage();
@@ -248,6 +253,7 @@ class HelloVulkan
         createImageViews();
         createRenderPass();
         createGraphicsPipeline();
+        createColorResources();
         createDepthResources();
         createFramebuffers();
         createUniformBuffers();
@@ -509,7 +515,7 @@ class HelloVulkan
         device->unmapMemory(*stagingBufferMemory);
         stbi_image_free(pixels);
 
-        createUniqueImage(texWidth, texHeight, mipLevels, vk::Format::eR8G8B8A8Unorm, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, textureImageMemory);
+        createUniqueImage(texWidth, texHeight, mipLevels, vk::SampleCountFlagBits::e1, vk::Format::eR8G8B8A8Unorm, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, textureImageMemory);
         transitionImageLayout(*textureImage, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, mipLevels);
         copyBufferToImage(*stagingBuffer, *textureImage, texWidth, texHeight);
         generateMipmaps(*textureImage, vk::Format::eR8G8B8A8Unorm, texWidth, texHeight, mipLevels);
@@ -539,7 +545,7 @@ class HelloVulkan
 
             uniqueCommandBuffers[0]->pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, barrier);
 
-            // vk::ImageBlit(srcSubresource_, srcOffsets_, dstSubresource_, dstOffsets_);
+            // vk::ImageBlit(srcSubresource_, srcOffsets_, dstSubresource_, dstOffsets_)
             uniqueCommandBuffers[0]->blitImage(
                 image, vk::ImageLayout::eTransferSrcOptimal,
                 image, vk::ImageLayout::eTransferDstOptimal,
@@ -574,7 +580,7 @@ class HelloVulkan
     {
         vk::Format depthFormat = findDepthFormat();
 
-        createUniqueImage(swapChainExtent.width, swapChainExtent.height, 1, depthFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal, depthImage, depthImageMemory);
+        createUniqueImage(swapChainExtent.width, swapChainExtent.height, 1, msaaSamples, depthFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal, depthImage, depthImageMemory);
         depthImageView = createUniqueImageView(*depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth, 1);
         transitionImageLayout(*depthImage, depthFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal, 1);
     }
@@ -602,10 +608,17 @@ class HelloVulkan
         throw std::runtime_error("failed to find supported format!");
     }
 
-    void createUniqueImage(uint32_t width, uint32_t height, uint32_t mipLevels, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::UniqueImage &image, vk::UniqueDeviceMemory &imageMemory)
+    void createColorResources()
     {
-        // vk::ImageCreateInfo(flags_, imageType_, format_, vk::Extent3D(width_, height_, depth_), mipLevels_, arrayLayers_, samples_, tiling_, usage_, sharingMode_, queueFamilyIndexCount_, pQueueFamilyIndices_, initialLayout_);
-        image = device->createImageUnique({{}, vk::ImageType::e2D, format, {width, height, 1U}, mipLevels, 1, vk::SampleCountFlagBits::e1, tiling, usage, vk::SharingMode::eExclusive, 0, nullptr, vk::ImageLayout::eUndefined});
+        createUniqueImage(swapChainExtent.width, swapChainExtent.height, 1, msaaSamples, swapChainImageFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal, colorImage, colorImageMemory);
+        colorImageView = createUniqueImageView(*colorImage, swapChainImageFormat, vk::ImageAspectFlagBits ::eColor, 1);
+        transitionImageLayout(*colorImage, swapChainImageFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal, 1);
+    }
+
+    void createUniqueImage(uint32_t width, uint32_t height, uint32_t mipLevels, vk::SampleCountFlagBits numSamples, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::UniqueImage &image, vk::UniqueDeviceMemory &imageMemory)
+    {
+        // vk::ImageCreateInfo(flags_, imageType_, format_, vk::Extent3D(width_, height_, depth_), mipLevels_, arrayLayers_, samples_, tiling_, usage_, sharingMode_, queueFamilyIndexCount_, pQueueFamilyIndices_, initialLayout_)
+        image = device->createImageUnique({{}, vk::ImageType::e2D, format, {width, height, 1U}, mipLevels, 1, numSamples, tiling, usage, vk::SharingMode::eExclusive, 0, nullptr, vk::ImageLayout::eUndefined});
 
         auto memRequirements = device->getImageMemoryRequirements(*image);
         uint32_t memoryType = findMemoryType(memRequirements.memoryTypeBits, properties);
@@ -650,6 +663,12 @@ class HelloVulkan
             dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
             sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
             destinationStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
+
+        } else if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eColorAttachmentOptimal) {
+            srcAccessMask = {};
+            dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+            sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+            destinationStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
         } else {
             throw std::invalid_argument("unsupported layout transition!");
@@ -698,7 +717,8 @@ class HelloVulkan
     {
         swapChainFramebuffers.resize(swapChainImageViews.size());
         for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-            std::array attachments = {*swapChainImageViews[i], *depthImageView};
+            // colorAttachment, depthAttachment, colorAttachmentResolve
+            std::array attachments = {*colorImageView, *depthImageView, *swapChainImageViews[i]};
 
             // vk::FramebufferCreateInfo(flags_, renderPass_, attachmentCount_, pAttachments_, width_, height_, layers_)
             swapChainFramebuffers[i] = device->createFramebufferUnique({{}, *renderPass, (uint32_t)attachments.size(), attachments.data(), swapChainExtent.width, swapChainExtent.height, 1});
@@ -764,7 +784,8 @@ class HelloVulkan
         // vk::PipelineRasterizationStateCreateInfo(flags_, depthClampEnable_, rasterizerDiscardEnable_, polygonMode_, cullMode_, frontFace_, depthBiasEnable_, depthBiasConstantFactor_, depthBiasClamp_, depthBiasSlopeFactor_, lineWidth_)
         auto rasterizer = vk::PipelineRasterizationStateCreateInfo({}, VK_FALSE, VK_FALSE, vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise, VK_FALSE, 0, 0, 0, 1);
 
-        auto multisampling = vk::PipelineMultisampleStateCreateInfo();
+        // vk::PipelineMultisampleStateCreateInfo(flags_, rasterizationSamples_, sampleShadingEnable_, minSampleShading_, pSampleMask_, alphaToCoverageEnable_, alphaToOneEnable_)
+        auto multisampling = vk::PipelineMultisampleStateCreateInfo({}, msaaSamples, VK_FALSE, 0, nullptr, VK_FALSE, VK_FALSE);
 
         // vk::PipelineDepthStencilStateCreateInfo(flags_, depthTestEnable_, depthWriteEnable_, depthCompareOp_, depthBoundsTestEnable_, stencilTestEnable_, front_, back_, minDepthBounds_, maxDepthBounds_)
         auto depthStencil = vk::PipelineDepthStencilStateCreateInfo({}, VK_TRUE, VK_TRUE, vk::CompareOp::eLess, VK_FALSE, VK_FALSE, {}, {}, 0, 0);
@@ -836,16 +857,18 @@ class HelloVulkan
     {
         // vk::AttachmentDescription(flags_, format_, samples_, loadOp_, storeOp_, stencilLoadOp_, stencilStoreOp_, initialLayout_, finalLayout_)
         std::vector<vk::AttachmentDescription> attachments = {
-            /* colorAttachment*/ {{}, swapChainImageFormat, vk::SampleCountFlagBits::e1, vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eStore, vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR},
-            /* depthAttachment*/ {{}, findDepthFormat(), vk::SampleCountFlagBits::e1, vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eDontCare, vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal}};
+            /* colorAttachment*/ {{}, swapChainImageFormat, msaaSamples, vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eStore, vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal},
+            /* depthAttachment*/ {{}, findDepthFormat(), msaaSamples, vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eDontCare, vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal},
+            /* colorAttachmentResolve*/ {{}, swapChainImageFormat, vk::SampleCountFlagBits::e1, vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eStore, vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR}};
 
         // vk::AttachmentReference(attachment_, layout_)
         std::vector<vk::AttachmentReference> attachmentRefs = {
             {0, vk::ImageLayout::eColorAttachmentOptimal},
-            {1, vk::ImageLayout::eDepthStencilAttachmentOptimal}};
+            {1, vk::ImageLayout::eDepthStencilAttachmentOptimal},
+            {2, vk::ImageLayout::eColorAttachmentOptimal}};
 
         // vk::SubpassDescription(flags_, pipelineBindPoint_, inputAttachmentCount_, pInputAttachments_, colorAttachmentCount_, pColorAttachments_, pResolveAttachments_, pDepthStencilAttachment_, preserveAttachmentCount_, pPreserveAttachments_)
-        auto subpass = vk::SubpassDescription({}, vk::PipelineBindPoint::eGraphics, 0, nullptr, 1, &attachmentRefs[0], nullptr, &attachmentRefs[1], 0, nullptr);
+        auto subpass = vk::SubpassDescription({}, vk::PipelineBindPoint::eGraphics, 0, nullptr, 1, &attachmentRefs[0], &attachmentRefs[2], &attachmentRefs[1], 0, nullptr);
 
         // vk::SubpassDependency(srcSubpass_, dstSubpass_, srcStageMask_, dstStageMask_, srcAccessMask_, dstAccessMask_, dependencyFlags_)
         auto dependency = vk::SubpassDependency(
@@ -989,10 +1012,32 @@ class HelloVulkan
         for (const auto &device : instance->enumeratePhysicalDevices()) {
             if (isDeviceSuitable(device)) {
                 physicalDevice = device;
+                msaaSamples = getMaxUsableSampleCount();
                 return;
             }
         }
         throw std::runtime_error("failed to find a suitable GPU!");
+    }
+
+    vk::SampleCountFlagBits getMaxUsableSampleCount()
+    {
+        auto limits = physicalDevice.getProperties().limits;
+        vk::SampleCountFlags counts = limits.framebufferColorSampleCounts & limits.framebufferDepthSampleCounts;
+
+        if (counts & vk::SampleCountFlagBits::e64) {
+            return vk::SampleCountFlagBits::e64;
+        } else if (counts & vk::SampleCountFlagBits::e32) {
+            return vk::SampleCountFlagBits::e32;
+        } else if (counts & vk::SampleCountFlagBits::e16) {
+            return vk::SampleCountFlagBits::e16;
+        } else if (counts & vk::SampleCountFlagBits::e8) {
+            return vk::SampleCountFlagBits::e8;
+        } else if (counts & vk::SampleCountFlagBits::e4) {
+            return vk::SampleCountFlagBits::e4;
+        } else if (counts & vk::SampleCountFlagBits::e2) {
+            return vk::SampleCountFlagBits::e2;
+        }
+        return vk::SampleCountFlagBits::e1;
     }
 
     bool isDeviceSuitable(vk::PhysicalDevice device)
