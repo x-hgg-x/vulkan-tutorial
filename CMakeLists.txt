@@ -11,10 +11,9 @@ find_package(Vulkan REQUIRED)
 
 set(SOURCES main.cpp)
 
-file(GLOB SHADERS "${CMAKE_SOURCE_DIR}/shaders/*.spv")
-file(COPY ${SHADERS} DESTINATION "${CMAKE_BINARY_DIR}/shaders")
-
-file(COPY "${CMAKE_SOURCE_DIR}/textures" DESTINATION "${CMAKE_BINARY_DIR}")
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_SOURCE_DIR}/shaders" "${CMAKE_BINARY_DIR}/shaders"
+                COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_SOURCE_DIR}/textures" "${CMAKE_BINARY_DIR}/textures"
+                COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_SOURCE_DIR}/models" "${CMAKE_BINARY_DIR}/models")
 
 add_executable(vktest ${SOURCES})
 target_link_libraries(vktest glfw Vulkan::Vulkan)
