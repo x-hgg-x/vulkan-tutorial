@@ -185,7 +185,7 @@ class HelloVulkan
         glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
     }
 
-    static void framebufferResizeCallback(GLFWwindow *window, int width, int height)
+    static void framebufferResizeCallback(GLFWwindow *window, int /*width*/, int /*height*/)
     {
         reinterpret_cast<HelloVulkan *>(glfwGetWindowUserPointer(window))->framebufferResized = true;
     }
@@ -1161,7 +1161,7 @@ class HelloVulkan
         return extensions;
     }
 
-    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
+    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT /*messageType*/, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void * /*pUserData*/)
     {
         std::cerr << "validation layer: (severity: 0x" << std::setfill('0') << std::setw(4) << std::hex << messageSeverity << ") " << pCallbackData->pMessage << std::endl;
         return VK_FALSE;

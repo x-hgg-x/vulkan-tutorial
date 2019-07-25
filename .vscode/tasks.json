@@ -10,7 +10,10 @@
                 "isDefault": true
             },
             "problemMatcher": [
-                "$gcc"
+                {
+                    "base": "$gcc",
+                    "fileLocation": "autoDetect",
+                }
             ]
         }
     ]
