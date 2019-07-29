@@ -100,12 +100,26 @@ struct SwapChainSupportDetails {
 class HelloVulkan
 {
   public:
+    HelloVulkan()
+    {
+        glfwInit();
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+
+        window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+        glfwSetWindowUserPointer(window, this);
+        glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+    }
+
     void run()
     {
-        initWindow();
         initVulkan();
         mainLoop();
-        cleanup();
+    }
+
+    ~HelloVulkan()
+    {
+        glfwDestroyWindow(window);
+        glfwTerminate();
     }
 
   private:
@@ -174,17 +188,6 @@ class HelloVulkan
 
     bool framebufferResized = false;
 
-    void initWindow()
-    {
-        glfwInit();
-
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-        window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
-        glfwSetWindowUserPointer(window, this);
-        glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-    }
-
     static void framebufferResizeCallback(GLFWwindow *window, int /*width*/, int /*height*/)
     {
         reinterpret_cast<HelloVulkan *>(glfwGetWindowUserPointer(window))->framebufferResized = true;
@@ -230,12 +233,6 @@ class HelloVulkan
         }
 
         device->waitIdle();
-    }
-
-    void cleanup()
-    {
-        glfwDestroyWindow(window);
-        glfwTerminate();
     }
 
     void recreateSwapChain()
