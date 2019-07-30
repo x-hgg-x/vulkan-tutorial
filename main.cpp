@@ -5,6 +5,7 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_ENABLE_EXPERIMENTAL
+#define GLM_FORCE_CXX14
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -18,13 +19,13 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstddef>
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <optional>
 #include <set>
-#include <stddef.h>
 #include <stdexcept>
 #include <unordered_map>
 
@@ -224,9 +225,9 @@ class HelloVulkan
 
     void mainLoop()
     {
-        while (!glfwWindowShouldClose(window)) {
+        while (glfwWindowShouldClose(window) == 0) {
             if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-                glfwSetWindowShouldClose(window, true);
+                glfwSetWindowShouldClose(window, 1);
             }
             glfwPollEvents();
             drawFrame();
@@ -269,7 +270,8 @@ class HelloVulkan
         if (result == vk::Result::eErrorOutOfDateKHR) {
             recreateSwapChain();
             return;
-        } else if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
+        }
+        if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
             throw std::runtime_error("failed to acquire swap chain image!");
         }
 
@@ -430,7 +432,7 @@ class HelloVulkan
         }
     }
 
-    void createUniqueBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::UniqueBuffer &buffer, vk::UniqueDeviceMemory &bufferMemory)
+    void createUniqueBuffer(vk::DeviceSize size, const vk::BufferUsageFlags &usage, const vk::MemoryPropertyFlags &properties, vk::UniqueBuffer &buffer, vk::UniqueDeviceMemory &bufferMemory)
     {
         // vk::BufferCreateInfo(flags_, size_, usage_, sharingMode_, queueFamilyIndexCount_, pQueueFamilyIndices_)
         buffer = device->createBufferUnique({{}, size, usage, vk::SharingMode::eExclusive, 0, nullptr});
@@ -452,11 +454,11 @@ class HelloVulkan
         endSingleTimeCommands(uniqueCommandBuffers);
     }
 
-    uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties)
+    uint32_t findMemoryType(uint32_t typeFilter, const vk::MemoryPropertyFlags &properties)
     {
         auto memProperties = physicalDevice.getMemoryProperties();
         for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+            if ((typeFilter & (1 << i)) != 0 && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
                 return i;
             }
         }
@@ -495,7 +497,7 @@ class HelloVulkan
     {
         int texWidth, texHeight, texChannels;
         stbi_uc *pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-        if (!pixels) {
+        if (pixels == nullptr) {
             throw std::runtime_error("failed to load texture image!");
         }
 
@@ -590,7 +592,7 @@ class HelloVulkan
             vk::FormatFeatureFlagBits::eDepthStencilAttachment);
     }
 
-    vk::Format findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features)
+    vk::Format findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, const vk::FormatFeatureFlags &features)
     {
 
         for (const auto &format : candidates) {
@@ -598,7 +600,8 @@ class HelloVulkan
 
             if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features) {
                 return format;
-            } else if (tiling == vk::ImageTiling::eOptimal && (props.optimalTilingFeatures & features) == features) {
+            }
+            if (tiling == vk::ImageTiling::eOptimal && (props.optimalTilingFeatures & features) == features) {
                 return format;
             }
         }
@@ -612,7 +615,7 @@ class HelloVulkan
         transitionImageLayout(*colorImage, swapChainImageFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal, 1);
     }
 
-    void createUniqueImage(uint32_t width, uint32_t height, uint32_t mipLevels, vk::SampleCountFlagBits numSamples, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::UniqueImage &image, vk::UniqueDeviceMemory &imageMemory)
+    void createUniqueImage(uint32_t width, uint32_t height, uint32_t mipLevels, vk::SampleCountFlagBits numSamples, vk::Format format, vk::ImageTiling tiling, const vk::ImageUsageFlags &usage, const vk::MemoryPropertyFlags &properties, vk::UniqueImage &image, vk::UniqueDeviceMemory &imageMemory)
     {
         // vk::ImageCreateInfo(flags_, imageType_, format_, vk::Extent3D(width_, height_, depth_), mipLevels_, arrayLayers_, samples_, tiling_, usage_, sharingMode_, queueFamilyIndexCount_, pQueueFamilyIndices_, initialLayout_)
         image = device->createImageUnique({{}, vk::ImageType::e2D, format, {width, height, 1U}, mipLevels, 1, numSamples, tiling, usage, vk::SharingMode::eExclusive, 0, nullptr, vk::ImageLayout::eUndefined});
@@ -885,7 +888,7 @@ class HelloVulkan
         }
     }
 
-    vk::UniqueImageView createUniqueImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels)
+    vk::UniqueImageView createUniqueImageView(vk::Image image, vk::Format format, const vk::ImageAspectFlags &aspectFlags, uint32_t mipLevels)
     {
         // vk::ImageViewCreateInfo(flags_, image_, viewType_, format_, components_, vk::ImageSubresourceRange(aspectMask_, baseMipLevel_, levelCount_, baseArrayLayer_, layerCount_))
         return device->createImageViewUnique({{}, image, vk::ImageViewType::e2D, format, {}, {aspectFlags, 0, mipLevels, 0, 1}});
@@ -962,7 +965,8 @@ class HelloVulkan
         for (const auto &availablePresentMode : availablePresentModes) {
             if (availablePresentMode == vk::PresentModeKHR::eMailbox) {
                 return availablePresentMode;
-            } else if (availablePresentMode == vk::PresentModeKHR::eImmediate) {
+            }
+            if (availablePresentMode == vk::PresentModeKHR::eImmediate) {
                 bestMode = availablePresentMode;
             }
         }
@@ -973,13 +977,13 @@ class HelloVulkan
     {
         if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
             return capabilities.currentExtent;
-        } else {
-            int width, height;
-            glfwGetFramebufferSize(window, &width, &height);
-
-            return {std::clamp((uint32_t)width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
-                    std::clamp((uint32_t)height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)};
         }
+
+        int width, height;
+        glfwGetFramebufferSize(window, &width, &height);
+
+        return {std::clamp((uint32_t)width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
+                std::clamp((uint32_t)height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)};
     }
 
     void createLogicalDevice()
@@ -990,6 +994,7 @@ class HelloVulkan
         std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
         float queuePriority = 1;
+        queueCreateInfos.reserve(uniqueQueueFamilies.size());
         for (uint32_t queueFamily : uniqueQueueFamilies) {
             // vk::DeviceQueueCreateInfo(flags_, queueFamilyIndex_, queueCount_, pQueuePriorities_)
             queueCreateInfos.push_back(vk::DeviceQueueCreateInfo({}, queueFamily, 1, &queuePriority));
@@ -1023,15 +1028,20 @@ class HelloVulkan
 
         if (counts & vk::SampleCountFlagBits::e64) {
             return vk::SampleCountFlagBits::e64;
-        } else if (counts & vk::SampleCountFlagBits::e32) {
+        }
+        if (counts & vk::SampleCountFlagBits::e32) {
             return vk::SampleCountFlagBits::e32;
-        } else if (counts & vk::SampleCountFlagBits::e16) {
+        }
+        if (counts & vk::SampleCountFlagBits::e16) {
             return vk::SampleCountFlagBits::e16;
-        } else if (counts & vk::SampleCountFlagBits::e8) {
+        }
+        if (counts & vk::SampleCountFlagBits::e8) {
             return vk::SampleCountFlagBits::e8;
-        } else if (counts & vk::SampleCountFlagBits::e4) {
+        }
+        if (counts & vk::SampleCountFlagBits::e4) {
             return vk::SampleCountFlagBits::e4;
-        } else if (counts & vk::SampleCountFlagBits::e2) {
+        }
+        if (counts & vk::SampleCountFlagBits::e2) {
             return vk::SampleCountFlagBits::e2;
         }
         return vk::SampleCountFlagBits::e1;
@@ -1041,7 +1051,7 @@ class HelloVulkan
     {
         if (findQueueFamilies(device).isComplete() && checkDeviceExtensionSupport(device)) {
             SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
-            return !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty() && device.getFeatures().samplerAnisotropy;
+            return !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty() && device.getFeatures().samplerAnisotropy != 0;
         }
         return false;
     }
@@ -1070,10 +1080,10 @@ class HelloVulkan
                 indices.graphicsFamily = i;
             }
 
-            VkBool32 presentSupport = false;
+            VkBool32 presentSupport = 0;
             device.getSurfaceSupportKHR(i, *surface, &presentSupport);
 
-            if (queueFamily.queueCount > 0 && presentSupport) {
+            if (queueFamily.queueCount > 0 && presentSupport != 0) {
                 indices.presentFamily = i;
             }
 

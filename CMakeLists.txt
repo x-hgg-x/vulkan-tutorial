@@ -6,6 +6,9 @@ project("Vulkan Test")
 
 set(CMAKE_CXX_STANDARD 17)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+# set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-extra-arg=-std=c++17;-checks=-clang-analyzer*,bugprone*,misc*,modernize*,performance*,readability*")
+
 find_package(glfw3 REQUIRED)
 find_package(Vulkan REQUIRED)
 

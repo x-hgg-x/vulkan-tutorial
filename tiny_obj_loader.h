@@ -58,6 +58,7 @@ THE SOFTWARE.
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace tinyobj
@@ -133,10 +134,10 @@ namespace tinyobj
 typedef double real_t;
 #else
 //#pragma message "using float"
-typedef float real_t;
+using real_t = float;
 #endif
 
-typedef enum {
+enum texture_type_t {
     TEXTURE_TYPE_NONE, // default
     TEXTURE_TYPE_SPHERE,
     TEXTURE_TYPE_CUBE_TOP,
@@ -145,9 +146,9 @@ typedef enum {
     TEXTURE_TYPE_CUBE_BACK,
     TEXTURE_TYPE_CUBE_LEFT,
     TEXTURE_TYPE_CUBE_RIGHT
-} texture_type_t;
+};
 
-typedef struct {
+struct texture_option_t {
     texture_type_t type;     // -type (default TEXTURE_TYPE_NONE)
     real_t sharpness;        // -boost (default 1.0?)
     real_t brightness;       // base_value in -mm option (default 0)
@@ -165,9 +166,9 @@ typedef struct {
     // extension
     std::string colorspace; // Explicitly specify color space of stored texel
                             // value. Usually `sRGB` or `linear` (default empty).
-} texture_option_t;
+};
 
-typedef struct {
+struct material_t {
     std::string name;
 
     real_t ambient[3];
@@ -226,25 +227,25 @@ typedef struct {
     int pad2;
 
     std::map<std::string, std::string> unknown_parameter;
-} material_t;
+};
 
-typedef struct {
+struct tag_t {
     std::string name;
 
     std::vector<int> intValues;
     std::vector<real_t> floatValues;
     std::vector<std::string> stringValues;
-} tag_t;
+};
 
 // Index struct to support different indices for vtx/normal/texcoord.
 // -1 means not used.
-typedef struct {
+struct index_t {
     int vertex_index;
     int normal_index;
     int texcoord_index;
-} index_t;
+};
 
-typedef struct {
+struct mesh_t {
     std::vector<index_t> indices;
     std::vector<unsigned char> num_face_vertices;  // The number of vertices per
                                                    // face. 3 = polygon, 4 = quad,
@@ -254,28 +255,28 @@ typedef struct {
                                                    // ID(0 = off. positive value
                                                    // = group id)
     std::vector<tag_t> tags;                       // SubD tag
-} mesh_t;
+};
 
 // typedef struct {
 //  std::vector<int> indices;  // pairs of indices for lines
 //} path_t;
 
-typedef struct {
+struct lines_t {
     // Linear flattened indices.
     std::vector<index_t> indices;       // indices for vertices(poly lines)
     std::vector<int> num_line_vertices; // The number of vertices per line.
-} lines_t;
+};
 
-typedef struct {
+struct points_t {
     std::vector<index_t> indices; // indices for points
-} points_t;
+};
 
-typedef struct {
+struct shape_t {
     std::string name;
     mesh_t mesh;
     lines_t lines;
     points_t points;
-} shape_t;
+};
 
 // Vertex attributes
 struct attrib_t {
@@ -291,7 +292,7 @@ struct attrib_t {
     std::vector<real_t> texcoord_ws; // 'vt'(w)
     std::vector<real_t> colors;      // extension: vertex colors
 
-    attrib_t() {}
+    attrib_t() = default;
 
     //
     // For pybind11
@@ -301,45 +302,37 @@ struct attrib_t {
     const std::vector<real_t> &GetVertexWeights() const { return vertex_weights; }
 };
 
-typedef struct callback_t_ {
+using callback_t = struct callback_t_ {
     // W is optional and set to 1 if there is no `w` item in `v` line
-    void (*vertex_cb)(void *user_data, real_t x, real_t y, real_t z, real_t w);
-    void (*normal_cb)(void *user_data, real_t x, real_t y, real_t z);
+    void (*vertex_cb)(void *user_data, real_t x, real_t y, real_t z, real_t w) = nullptr;
+    void (*normal_cb)(void *user_data, real_t x, real_t y, real_t z) = nullptr;
 
     // y and z are optional and set to 0 if there is no `y` and/or `z` item(s) in
     // `vt` line.
-    void (*texcoord_cb)(void *user_data, real_t x, real_t y, real_t z);
+    void (*texcoord_cb)(void *user_data, real_t x, real_t y, real_t z) = nullptr;
 
     // called per 'f' line. num_indices is the number of face indices(e.g. 3 for
     // triangle, 4 for quad)
     // 0 will be passed for undefined index in index_t members.
-    void (*index_cb)(void *user_data, index_t *indices, int num_indices);
+    void (*index_cb)(void *user_data, index_t *indices, int num_indices) = nullptr;
     // `name` material name, `material_id` = the array index of material_t[]. -1
     // if
     // a material not found in .mtl
-    void (*usemtl_cb)(void *user_data, const char *name, int material_id);
+    void (*usemtl_cb)(void *user_data, const char *name, int material_id) = nullptr;
     // `materials` = parsed material data.
     void (*mtllib_cb)(void *user_data, const material_t *materials,
-                      int num_materials);
+                      int num_materials) = nullptr;
     // There may be multiple group names
-    void (*group_cb)(void *user_data, const char **names, int num_names);
-    void (*object_cb)(void *user_data, const char *name);
+    void (*group_cb)(void *user_data, const char **names, int num_names) = nullptr;
+    void (*object_cb)(void *user_data, const char *name) = nullptr;
 
-    callback_t_()
-        : vertex_cb(NULL),
-          normal_cb(NULL),
-          texcoord_cb(NULL),
-          index_cb(NULL),
-          usemtl_cb(NULL),
-          mtllib_cb(NULL),
-          group_cb(NULL),
-          object_cb(NULL) {}
-} callback_t;
+    callback_t_() = default;
+};
 
 class MaterialReader
 {
   public:
-    MaterialReader() {}
+    MaterialReader() = default;
     virtual ~MaterialReader();
 
     virtual bool operator()(const std::string &matId,
@@ -354,13 +347,13 @@ class MaterialReader
 class MaterialFileReader : public MaterialReader
 {
   public:
-    explicit MaterialFileReader(const std::string &mtl_basedir)
-        : m_mtlBaseDir(mtl_basedir) {}
-    virtual ~MaterialFileReader() {}
-    virtual bool operator()(const std::string &matId,
-                            std::vector<material_t> *materials,
-                            std::map<std::string, int> *matMap, std::string *warn,
-                            std::string *err);
+    explicit MaterialFileReader(std::string mtl_basedir)
+        : m_mtlBaseDir(std::move(mtl_basedir)) {}
+    ~MaterialFileReader() override = default;
+    bool operator()(const std::string &matId,
+                    std::vector<material_t> *materials,
+                    std::map<std::string, int> *matMap, std::string *warn,
+                    std::string *err) override;
 
   private:
     std::string m_mtlBaseDir;
@@ -374,11 +367,11 @@ class MaterialStreamReader : public MaterialReader
   public:
     explicit MaterialStreamReader(std::istream &inStream)
         : m_inStream(inStream) {}
-    virtual ~MaterialStreamReader() {}
-    virtual bool operator()(const std::string &matId,
-                            std::vector<material_t> *materials,
-                            std::map<std::string, int> *matMap, std::string *warn,
-                            std::string *err);
+    ~MaterialStreamReader() override = default;
+    bool operator()(const std::string &matId,
+                    std::vector<material_t> *materials,
+                    std::map<std::string, int> *matMap, std::string *warn,
+                    std::string *err) override;
 
   private:
     std::istream &m_inStream;
@@ -386,13 +379,13 @@ class MaterialStreamReader : public MaterialReader
 
 // v2 API
 struct ObjReaderConfig {
-    bool triangulate; // triangulate polygon?
+    bool triangulate = true; // triangulate polygon?
 
     /// Parse vertex color.
     /// If vertex color is not present, its filled with default value.
     /// false = no vertex color
     /// This will increase memory of parsed .obj
-    bool vertex_color;
+    bool vertex_color = true;
 
     ///
     /// Search path to .mtl file.
@@ -402,7 +395,7 @@ struct ObjReaderConfig {
     std::string mtl_search_path;
 
     ObjReaderConfig()
-        : triangulate(true), vertex_color(true), mtl_search_path("./") {}
+        : mtl_search_path("./") {}
 };
 
 ///
@@ -411,8 +404,8 @@ struct ObjReaderConfig {
 class ObjReader
 {
   public:
-    ObjReader() : valid_(false) {}
-    ~ObjReader() {}
+    ObjReader() = default;
+    ~ObjReader() = default;
 
     ///
     /// Load .obj and .mtl from a file.
@@ -455,7 +448,7 @@ class ObjReader
     const std::string &Error() const { return error_; }
 
   private:
-    bool valid_;
+    bool valid_ = false;
 
     attrib_t attrib_;
     std::vector<shape_t> shapes_;
@@ -482,7 +475,7 @@ class ObjReader
 bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
              std::vector<material_t> *materials, std::string *warn,
              std::string *err, const char *filename,
-             const char *mtl_basedir = NULL, bool triangulate = true,
+             const char *mtl_basedir = nullptr, bool trianglulate = true,
              bool default_vcols_fallback = true);
 
 /// Loads .obj from a file with custom user callback.
@@ -492,9 +485,9 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
 /// Returns warning message into `warn`, and error message into `err`
 /// See `examples/callback_api/` for how to use this function.
 bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
-                         void *user_data = NULL,
-                         MaterialReader *readMatFn = NULL,
-                         std::string *warn = NULL, std::string *err = NULL);
+                         void *user_data = nullptr,
+                         MaterialReader *readMatFn = nullptr,
+                         std::string *warn = nullptr, std::string *err = nullptr);
 
 /// Loads object from a std::istream, uses `readMatFn` to retrieve
 /// std::istream for materials.
@@ -503,7 +496,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
 bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
              std::vector<material_t> *materials, std::string *warn,
              std::string *err, std::istream *inStream,
-             MaterialReader *readMatFn = NULL, bool triangulate = true,
+             MaterialReader *readMatFn = nullptr, bool triangulate = true,
              bool default_vcols_fallback = true);
 
 /// Loads materials into std::map
@@ -544,11 +537,11 @@ bool ParseTextureNameAndOption(std::string *texname, texture_option_t *texopt,
 namespace tinyobj
 {
 
-MaterialReader::~MaterialReader() {}
+MaterialReader::~MaterialReader() = default;
 
 struct vertex_index_t {
-    int v_idx, vt_idx, vn_idx;
-    vertex_index_t() : v_idx(-1), vt_idx(-1), vn_idx(-1) {}
+    int v_idx = -1, vt_idx = -1, vn_idx = -1;
+    vertex_index_t() = default;
     explicit vertex_index_t(int idx) : v_idx(idx), vt_idx(idx), vn_idx(idx) {}
     vertex_index_t(int vidx, int vtidx, int vnidx)
         : v_idx(vidx), vt_idx(vtidx), vn_idx(vnidx) {}
@@ -557,12 +550,11 @@ struct vertex_index_t {
 // Internal data structure for face representation
 // index + smoothing group.
 struct face_t {
-    unsigned int
-        smoothing_group_id; // smoothing group id. 0 = smoothing groupd is off.
-    int pad_;
+    unsigned int smoothing_group_id = 0; // smoothing group id. 0 = smoothing groupd is off.
+    int pad_ = 0;
     std::vector<vertex_index_t> vertex_indices; // face vertex indices.
 
-    face_t() : smoothing_group_id(0), pad_(0) {}
+    face_t() = default;
 };
 
 // Internal data structure for line representation
@@ -582,10 +574,10 @@ struct __points_t {
 };
 
 struct tag_sizes {
-    tag_sizes() : num_ints(0), num_reals(0), num_strings(0) {}
-    int num_ints;
-    int num_reals;
-    int num_strings;
+    tag_sizes() = default;
+    int num_ints = 0;
+    int num_reals = 0;
+    int num_strings = 0;
 };
 
 struct obj_shape {
@@ -638,13 +630,15 @@ static std::istream &safeGetline(std::istream &is, std::string &t)
             case '\n':
                 return is;
             case '\r':
-                if (sb->sgetc() == '\n')
+                if (sb->sgetc() == '\n') {
                     sb->sbumpc();
+                }
                 return is;
             case EOF:
                 // Also handle the case when the last line has no line ending
-                if (t.empty())
+                if (t.empty()) {
                     is.setstate(std::ios::eofbit);
+                }
                 return is;
             default:
                 t += static_cast<char>(c);
@@ -663,7 +657,7 @@ static std::istream &safeGetline(std::istream &is, std::string &t)
 // Make index zero-base, and also support relative index.
 static inline bool fixIndex(int idx, int n, int *ret)
 {
-    if (!ret) {
+    if (ret == nullptr) {
         return false;
     }
 
@@ -788,17 +782,17 @@ static bool tryParseDouble(const char *s, const char *s_end, double *result)
             read++;
             end_not_reached = (curr != s_end);
         }
-    }
 
-    // We must make sure we actually got something.
-    if (!leading_decimal_dots) {
-        if (read == 0)
+        // We must make sure we actually got something.
+        if (read == 0) {
             goto fail;
+        }
     }
 
     // We allow numbers of form "#", "###" etc.
-    if (!end_not_reached)
+    if (!end_not_reached) {
         goto assemble;
+    }
 
     // Read the decimal part.
     if (*curr == '.') {
@@ -830,8 +824,9 @@ static bool tryParseDouble(const char *s, const char *s_end, double *result)
         goto assemble;
     }
 
-    if (!end_not_reached)
+    if (!end_not_reached) {
         goto assemble;
+    }
 
     // Read the exponent part.
     if (*curr == 'e' || *curr == 'E') {
@@ -857,14 +852,15 @@ static bool tryParseDouble(const char *s, const char *s_end, double *result)
             end_not_reached = (curr != s_end);
         }
         exponent *= (exp_sign == '+' ? 1 : -1);
-        if (read == 0)
+        if (read == 0) {
             goto fail;
+        }
     }
 
 assemble:
     *result = (sign == '+' ? 1 : -1) *
-              (exponent ? std::ldexp(mantissa * std::pow(5.0, exponent), exponent)
-                        : mantissa);
+              (exponent != 0 ? std::ldexp(mantissa * std::pow(5.0, exponent), exponent)
+                             : mantissa);
     return true;
 fail:
     return false;
@@ -876,7 +872,7 @@ static inline real_t parseReal(const char **token, double default_value = 0.0)
     const char *end = (*token) + strcspn((*token), " \t\r");
     double val = default_value;
     tryParseDouble((*token), end, &val);
-    real_t f = static_cast<real_t>(val);
+    auto f = static_cast<real_t>(val);
     (*token) = end;
     return f;
 }
@@ -888,7 +884,7 @@ static inline bool parseReal(const char **token, real_t *out)
     double val;
     bool ret = tryParseDouble((*token), end, &val);
     if (ret) {
-        real_t f = static_cast<real_t>(val);
+        auto f = static_cast<real_t>(val);
         (*out) = f;
     }
     (*token) = end;
@@ -1020,7 +1016,7 @@ static tag_sizes parseTagTriple(const char **token)
 static bool parseTriple(const char **token, int vsize, int vnsize, int vtsize,
                         vertex_index_t *ret)
 {
-    if (!ret) {
+    if (ret == nullptr) {
         return false;
     }
 
@@ -1183,9 +1179,8 @@ bool ParseTextureNameAndOption(std::string *texname, texture_option_t *texopt,
     if (found_texname) {
         (*texname) = texture_name;
         return true;
-    } else {
-        return false;
     }
+    return false;
 }
 
 static void InitTexOpt(texture_option_t *texopt, const bool is_bump)
@@ -1274,10 +1269,9 @@ static int pnpoly(int nvert, T *vertx, T *verty, T testx, T testy)
     int i, j, c = 0;
     for (i = 0, j = nvert - 1; i < nvert; j = i++) {
         if (((verty[i] > testy) != (verty[j] > testy)) &&
-            (testx <
-             (vertx[j] - vertx[i]) * (testy - verty[i]) / (verty[j] - verty[i]) +
-                 vertx[i]))
+            (testx < (vertx[j] - vertx[i]) * (testy - verty[i]) / (verty[j] - verty[i]) + vertx[i])) {
             c = !c;
+        }
     }
     return c;
 }
@@ -1298,9 +1292,7 @@ static bool exportGroupsToShape(shape_t *shape, const PrimGroup &prim_group,
     // polygon
     if (!prim_group.faceGroup.empty()) {
         // Flatten vertices and indices
-        for (size_t i = 0; i < prim_group.faceGroup.size(); i++) {
-            const face_t &face = prim_group.faceGroup[i];
-
+        for (const auto &face : prim_group.faceGroup) {
             size_t npolys = face.vertex_indices.size();
 
             if (npolys < 3) {
@@ -1319,9 +1311,9 @@ static bool exportGroupsToShape(shape_t *shape, const PrimGroup &prim_group,
                     i0 = face.vertex_indices[(k + 0) % npolys];
                     i1 = face.vertex_indices[(k + 1) % npolys];
                     i2 = face.vertex_indices[(k + 2) % npolys];
-                    size_t vi0 = size_t(i0.v_idx);
-                    size_t vi1 = size_t(i1.v_idx);
-                    size_t vi2 = size_t(i2.v_idx);
+                    auto vi0 = size_t(i0.v_idx);
+                    auto vi1 = size_t(i1.v_idx);
+                    auto vi2 = size_t(i2.v_idx);
 
                     if (((3 * vi0 + 2) >= v.size()) || ((3 * vi1 + 2) >= v.size()) ||
                         ((3 * vi2 + 2) >= v.size())) {
@@ -1353,8 +1345,9 @@ static bool exportGroupsToShape(shape_t *shape, const PrimGroup &prim_group,
                         if (cx > cy && cx > cz) {
                         } else {
                             axes[0] = 0;
-                            if (cz > cx && cz > cy)
+                            if (cz > cx && cz > cy) {
                                 axes[1] = 1;
+                            }
                         }
                         break;
                     }
@@ -1364,8 +1357,8 @@ static bool exportGroupsToShape(shape_t *shape, const PrimGroup &prim_group,
                 for (size_t k = 0; k < npolys; ++k) {
                     i0 = face.vertex_indices[(k + 0) % npolys];
                     i1 = face.vertex_indices[(k + 1) % npolys];
-                    size_t vi0 = size_t(i0.v_idx);
-                    size_t vi1 = size_t(i1.v_idx);
+                    auto vi0 = size_t(i0.v_idx);
+                    auto vi1 = size_t(i1.v_idx);
                     if (((vi0 * 3 + axes[0]) >= v.size()) ||
                         ((vi0 * 3 + axes[1]) >= v.size()) ||
                         ((vi1 * 3 + axes[0]) >= v.size()) ||
@@ -1410,7 +1403,7 @@ static bool exportGroupsToShape(shape_t *shape, const PrimGroup &prim_group,
 
                     for (size_t k = 0; k < 3; k++) {
                         ind[k] = remainingFace.vertex_indices[(guess_vert + k) % npolys];
-                        size_t vi = size_t(ind[k].v_idx);
+                        auto vi = size_t(ind[k].v_idx);
                         if (((vi * 3 + axes[0]) >= v.size()) ||
                             ((vi * 3 + axes[1]) >= v.size())) {
                             // ???
@@ -1442,7 +1435,7 @@ static bool exportGroupsToShape(shape_t *shape, const PrimGroup &prim_group,
                             continue;
                         }
 
-                        size_t ovi = size_t(remainingFace.vertex_indices[idx].v_idx);
+                        auto ovi = size_t(remainingFace.vertex_indices[idx].v_idx);
 
                         if (((ovi * 3 + axes[0]) >= v.size()) ||
                             ((ovi * 3 + axes[1]) >= v.size())) {
@@ -1451,7 +1444,7 @@ static bool exportGroupsToShape(shape_t *shape, const PrimGroup &prim_group,
                         }
                         real_t tx = v[ovi * 3 + axes[0]];
                         real_t ty = v[ovi * 3 + axes[1]];
-                        if (pnpoly(3, vx, vy, tx, ty)) {
+                        if (pnpoly(3, vx, vy, tx, ty) != 0) {
                             overlap = true;
                             break;
                         }
@@ -1542,11 +1535,8 @@ static bool exportGroupsToShape(shape_t *shape, const PrimGroup &prim_group,
     // line
     if (!prim_group.lineGroup.empty()) {
         // Flatten indices
-        for (size_t i = 0; i < prim_group.lineGroup.size(); i++) {
-            for (size_t j = 0; j < prim_group.lineGroup[i].vertex_indices.size(); j++) {
-
-                const vertex_index_t &vi = prim_group.lineGroup[i].vertex_indices[j];
-
+        for (const auto &group : prim_group.lineGroup) {
+            for (const auto &vi : group.vertex_indices) {
                 index_t idx;
                 idx.vertex_index = vi.v_idx;
                 idx.normal_index = vi.vn_idx;
@@ -1555,18 +1545,15 @@ static bool exportGroupsToShape(shape_t *shape, const PrimGroup &prim_group,
                 shape->lines.indices.push_back(idx);
             }
 
-            shape->lines.num_line_vertices.push_back(int(prim_group.lineGroup[i].vertex_indices.size()));
+            shape->lines.num_line_vertices.push_back(int(group.vertex_indices.size()));
         }
     }
 
     // points
     if (!prim_group.pointsGroup.empty()) {
         // Flatten & convert indices
-        for (size_t i = 0; i < prim_group.pointsGroup.size(); i++) {
-            for (size_t j = 0; j < prim_group.pointsGroup[i].vertex_indices.size(); j++) {
-
-                const vertex_index_t &vi = prim_group.pointsGroup[i].vertex_indices[j];
-
+        for (const auto &group : prim_group.pointsGroup) {
+            for (const auto &vi : group.vertex_indices) {
                 index_t idx;
                 idx.vertex_index = vi.v_idx;
                 idx.normal_index = vi.vn_idx;
@@ -1616,18 +1603,20 @@ void LoadMtl(std::map<std::string, int> *material_map,
         line_no++;
 
         // Trim trailing whitespace.
-        if (linebuf.size() > 0) {
+        if (!linebuf.empty()) {
             linebuf = linebuf.substr(0, linebuf.find_last_not_of(" \t") + 1);
         }
 
         // Trim newline '\r\n' or '\n'
-        if (linebuf.size() > 0) {
-            if (linebuf[linebuf.size() - 1] == '\n')
+        if (!linebuf.empty()) {
+            if (linebuf[linebuf.size() - 1] == '\n') {
                 linebuf.erase(linebuf.size() - 1);
+            }
         }
-        if (linebuf.size() > 0) {
-            if (linebuf[linebuf.size() - 1] == '\r')
+        if (!linebuf.empty()) {
+            if (linebuf[linebuf.size() - 1] == '\r') {
                 linebuf.erase(linebuf.size() - 1);
+            }
         }
 
         // Skip if empty line.
@@ -1640,11 +1629,13 @@ void LoadMtl(std::map<std::string, int> *material_map,
         token += strspn(token, " \t");
 
         assert(token);
-        if (token[0] == '\0')
+        if (token[0] == '\0') {
             continue; // empty line
+        }
 
-        if (token[0] == '#')
+        if (token[0] == '#') {
             continue; // comment line
+        }
 
         // new mtl
         if ((0 == strncmp(token, "newmtl", 6)) && IS_SPACE((token[6]))) {
@@ -1952,10 +1943,10 @@ void LoadMtl(std::map<std::string, int> *material_map,
 
         // unknown parameter
         const char *_space = strchr(token, ' ');
-        if (!_space) {
+        if (_space == nullptr) {
             _space = strchr(token, '\t');
         }
-        if (_space) {
+        if (_space != nullptr) {
             std::ptrdiff_t len = _space - token;
             std::string key(token, static_cast<size_t>(len));
             std::string value = _space + 1;
@@ -1968,7 +1959,7 @@ void LoadMtl(std::map<std::string, int> *material_map,
         material.name, static_cast<int>(materials->size())));
     materials->push_back(material);
 
-    if (warning) {
+    if (warning != nullptr) {
         (*warning) = warn_ss.str();
     }
 }
@@ -1990,7 +1981,7 @@ bool MaterialFileReader::operator()(const std::string &matId,
     if (!matIStream) {
         std::stringstream ss;
         ss << "Material file [ " << filepath << " ] not found." << std::endl;
-        if (warn) {
+        if (warn != nullptr) {
             (*warn) += ss.str();
         }
         return false;
@@ -2011,7 +2002,7 @@ bool MaterialStreamReader::operator()(const std::string &matId,
     if (!m_inStream) {
         std::stringstream ss;
         ss << "Material stream in error state. " << std::endl;
-        if (warn) {
+        if (warn != nullptr) {
             (*warn) += ss.str();
         }
         return false;
@@ -2038,21 +2029,22 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
     std::ifstream ifs(filename);
     if (!ifs) {
         errss << "Cannot open file [" << filename << "]" << std::endl;
-        if (err) {
+        if (err != nullptr) {
             (*err) = errss.str();
         }
         return false;
     }
 
-    std::string baseDir = mtl_basedir ? mtl_basedir : "";
+    std::string baseDir = mtl_basedir != nullptr ? mtl_basedir : "";
     if (!baseDir.empty()) {
 #ifndef _WIN32
         const char dirsep = '/';
 #else
         const char dirsep = '\\';
 #endif
-        if (baseDir[baseDir.length() - 1] != dirsep)
+        if (baseDir[baseDir.length() - 1] != dirsep) {
             baseDir += dirsep;
+        }
     }
     MaterialFileReader matFileReader(baseDir);
 
@@ -2100,13 +2092,15 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
         line_num++;
 
         // Trim newline '\r\n' or '\n'
-        if (linebuf.size() > 0) {
-            if (linebuf[linebuf.size() - 1] == '\n')
+        if (!linebuf.empty()) {
+            if (linebuf[linebuf.size() - 1] == '\n') {
                 linebuf.erase(linebuf.size() - 1);
+            }
         }
-        if (linebuf.size() > 0) {
-            if (linebuf[linebuf.size() - 1] == '\r')
+        if (!linebuf.empty()) {
+            if (linebuf[linebuf.size() - 1] == '\r') {
                 linebuf.erase(linebuf.size() - 1);
+            }
         }
 
         // Skip if empty line.
@@ -2119,11 +2113,13 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
         token += strspn(token, " \t");
 
         assert(token);
-        if (token[0] == '\0')
+        if (token[0] == '\0') {
             continue; // empty line
+        }
 
-        if (token[0] == '#')
+        if (token[0] == '#') {
             continue; // comment line
+        }
 
         // vertex
         if (token[0] == 'v' && IS_SPACE((token[1]))) {
@@ -2178,7 +2174,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
                 if (!parseTriple(&token, static_cast<int>(v.size() / 3),
                                  static_cast<int>(vn.size() / 3),
                                  static_cast<int>(vt.size() / 2), &vi)) {
-                    if (err) {
+                    if (err != nullptr) {
                         std::stringstream ss;
                         ss << "Failed parse `l' line(e.g. zero value for vertex index. line "
                            << line_num << ".)\n";
@@ -2209,7 +2205,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
                 if (!parseTriple(&token, static_cast<int>(v.size() / 3),
                                  static_cast<int>(vn.size() / 3),
                                  static_cast<int>(vt.size() / 2), &vi)) {
-                    if (err) {
+                    if (err != nullptr) {
                         std::stringstream ss;
                         ss << "Failed parse `p' line(e.g. zero value for vertex index. line "
                            << line_num << ".)\n";
@@ -2244,7 +2240,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
                 if (!parseTriple(&token, static_cast<int>(v.size() / 3),
                                  static_cast<int>(vn.size() / 3),
                                  static_cast<int>(vt.size() / 2), &vi)) {
-                    if (err) {
+                    if (err != nullptr) {
                         std::stringstream ss;
                         ss << "Failed parse `f' line(e.g. zero value for face index. line "
                            << line_num << ".)\n";
@@ -2299,14 +2295,14 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
 
         // load mtl
         if ((0 == strncmp(token, "mtllib", 6)) && IS_SPACE((token[6]))) {
-            if (readMatFn) {
+            if (readMatFn != nullptr) {
                 token += 7;
 
                 std::vector<std::string> filenames;
                 SplitString(std::string(token), ' ', filenames);
 
                 if (filenames.empty()) {
-                    if (warn) {
+                    if (warn != nullptr) {
                         std::stringstream ss;
                         ss << "Looks like empty filename for mtllib. Use default "
                               "material (line "
@@ -2316,16 +2312,16 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
                     }
                 } else {
                     bool found = false;
-                    for (size_t s = 0; s < filenames.size(); s++) {
+                    for (const auto &filename : filenames) {
                         std::string warn_mtl;
                         std::string err_mtl;
-                        bool ok = (*readMatFn)(filenames[s].c_str(), materials,
+                        bool ok = (*readMatFn)(filename, materials,
                                                &material_map, &warn_mtl, &err_mtl);
-                        if (warn && (!warn_mtl.empty())) {
+                        if ((warn != nullptr) && (!warn_mtl.empty())) {
                             (*warn) += warn_mtl;
                         }
 
-                        if (err && (!err_mtl.empty())) {
+                        if ((err != nullptr) && (!err_mtl.empty())) {
                             (*err) += err_mtl;
                         }
 
@@ -2336,7 +2332,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
                     }
 
                     if (!found) {
-                        if (warn) {
+                        if (warn != nullptr) {
                             (*warn) +=
                                 "Failed to load material file(s). Use default "
                                 "material.\n";
@@ -2355,7 +2351,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
                                            triangulate, v);
             (void)ret; // return value not used.
 
-            if (shape.mesh.indices.size() > 0) {
+            if (!shape.mesh.indices.empty()) {
                 shapes->push_back(shape);
             }
 
@@ -2376,7 +2372,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
 
             if (names.size() < 2) {
                 // 'g' with empty names
-                if (warn) {
+                if (warn != nullptr) {
                     std::stringstream ss;
                     ss << "Empty group name. line: " << line_num << "\n";
                     (*warn) += ss.str();
@@ -2517,7 +2513,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
     }
 
     if (greatest_v_idx >= static_cast<int>(v.size() / 3)) {
-        if (warn) {
+        if (warn != nullptr) {
             std::stringstream ss;
             ss << "Vertex indices out of bounds (line " << line_num << ".)\n"
                << std::endl;
@@ -2525,7 +2521,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
         }
     }
     if (greatest_vn_idx >= static_cast<int>(vn.size() / 3)) {
-        if (warn) {
+        if (warn != nullptr) {
             std::stringstream ss;
             ss << "Vertex normal indices out of bounds (line " << line_num << ".)\n"
                << std::endl;
@@ -2533,7 +2529,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
         }
     }
     if (greatest_vt_idx >= static_cast<int>(vt.size() / 2)) {
-        if (warn) {
+        if (warn != nullptr) {
             std::stringstream ss;
             ss << "Vertex texcoord indices out of bounds (line " << line_num << ".)\n"
                << std::endl;
@@ -2547,13 +2543,12 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
     // line.
     // we also add `shape` to `shapes` when `shape.mesh` has already some
     // faces(indices)
-    if (ret || shape.mesh.indices
-                   .size()) { // FIXME(syoyo): Support other prims(e.g. lines)
+    if (ret || !shape.mesh.indices.empty()) { // FIXME(syoyo): Support other prims(e.g. lines)
         shapes->push_back(shape);
     }
     prim_group.clear(); // for safety
 
-    if (err) {
+    if (err != nullptr) {
         (*err) += errss.str();
     }
 
@@ -2590,13 +2585,15 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
         safeGetline(inStream, linebuf);
 
         // Trim newline '\r\n' or '\n'
-        if (linebuf.size() > 0) {
-            if (linebuf[linebuf.size() - 1] == '\n')
+        if (!linebuf.empty()) {
+            if (linebuf[linebuf.size() - 1] == '\n') {
                 linebuf.erase(linebuf.size() - 1);
+            }
         }
-        if (linebuf.size() > 0) {
-            if (linebuf[linebuf.size() - 1] == '\r')
+        if (!linebuf.empty()) {
+            if (linebuf[linebuf.size() - 1] == '\r') {
                 linebuf.erase(linebuf.size() - 1);
+            }
         }
 
         // Skip if empty line.
@@ -2609,11 +2606,13 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
         token += strspn(token, " \t");
 
         assert(token);
-        if (token[0] == '\0')
+        if (token[0] == '\0') {
             continue; // empty line
+        }
 
-        if (token[0] == '#')
+        if (token[0] == '#') {
             continue; // comment line
+        }
 
         // vertex
         if (token[0] == 'v' && IS_SPACE((token[1]))) {
@@ -2621,7 +2620,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
             // TODO(syoyo): Support parsing vertex color extension.
             real_t x, y, z, w; // w is optional. default = 1.0
             parseV(&x, &y, &z, &w, &token);
-            if (callback.vertex_cb) {
+            if (callback.vertex_cb != nullptr) {
                 callback.vertex_cb(user_data, x, y, z, w);
             }
             continue;
@@ -2632,7 +2631,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
             token += 3;
             real_t x, y, z;
             parseReal3(&x, &y, &z, &token);
-            if (callback.normal_cb) {
+            if (callback.normal_cb != nullptr) {
                 callback.normal_cb(user_data, x, y, z);
             }
             continue;
@@ -2643,7 +2642,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
             token += 3;
             real_t x, y, z; // y and z are optional. default = 0.0
             parseReal3(&x, &y, &z, &token);
-            if (callback.texcoord_cb) {
+            if (callback.texcoord_cb != nullptr) {
                 callback.texcoord_cb(user_data, x, y, z);
             }
             continue;
@@ -2668,7 +2667,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
                 token += n;
             }
 
-            if (callback.index_cb && indices.size() > 0) {
+            if ((callback.index_cb != nullptr) && !indices.empty()) {
                 callback.index_cb(user_data, &indices.at(0),
                                   static_cast<int>(indices.size()));
             }
@@ -2694,7 +2693,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
                 material_id = newMaterialId;
             }
 
-            if (callback.usemtl_cb) {
+            if (callback.usemtl_cb != nullptr) {
                 callback.usemtl_cb(user_data, namebuf.c_str(), material_id);
             }
 
@@ -2703,31 +2702,31 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
 
         // load mtl
         if ((0 == strncmp(token, "mtllib", 6)) && IS_SPACE((token[6]))) {
-            if (readMatFn) {
+            if (readMatFn != nullptr) {
                 token += 7;
 
                 std::vector<std::string> filenames;
                 SplitString(std::string(token), ' ', filenames);
 
                 if (filenames.empty()) {
-                    if (warn) {
+                    if (warn != nullptr) {
                         (*warn) +=
                             "Looks like empty filename for mtllib. Use default "
                             "material. \n";
                     }
                 } else {
                     bool found = false;
-                    for (size_t s = 0; s < filenames.size(); s++) {
+                    for (const auto &filename : filenames) {
                         std::string warn_mtl;
                         std::string err_mtl;
-                        bool ok = (*readMatFn)(filenames[s].c_str(), &materials,
+                        bool ok = (*readMatFn)(filename, &materials,
                                                &material_map, &warn_mtl, &err_mtl);
 
-                        if (warn && (!warn_mtl.empty())) {
+                        if ((warn != nullptr) && (!warn_mtl.empty())) {
                             (*warn) += warn_mtl; // This should be warn message.
                         }
 
-                        if (err && (!err_mtl.empty())) {
+                        if ((err != nullptr) && (!err_mtl.empty())) {
                             (*err) += err_mtl;
                         }
 
@@ -2738,13 +2737,13 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
                     }
 
                     if (!found) {
-                        if (warn) {
+                        if (warn != nullptr) {
                             (*warn) +=
                                 "Failed to load material file(s). Use default "
                                 "material.\n";
                         }
                     } else {
-                        if (callback.mtllib_cb) {
+                        if (callback.mtllib_cb != nullptr) {
                             callback.mtllib_cb(user_data, &materials.at(0),
                                                static_cast<int>(materials.size()));
                         }
@@ -2767,7 +2766,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
 
             assert(names.size() > 0);
 
-            if (callback.group_cb) {
+            if (callback.group_cb != nullptr) {
                 if (names.size() > 1) {
                     // create const char* array.
                     names_out.resize(names.size() - 1);
@@ -2778,7 +2777,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
                                       static_cast<int>(names_out.size()));
 
                 } else {
-                    callback.group_cb(user_data, NULL, 0);
+                    callback.group_cb(user_data, nullptr, 0);
                 }
             }
 
@@ -2794,7 +2793,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
             ss << token;
             std::string object_name = ss.str();
 
-            if (callback.object_cb) {
+            if (callback.object_cb != nullptr) {
                 callback.object_cb(user_data, object_name.c_str());
             }
 
@@ -2842,7 +2841,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
         // Ignore unknown command.
     }
 
-    if (err) {
+    if (err != nullptr) {
         (*err) += errss.str();
     }
 
