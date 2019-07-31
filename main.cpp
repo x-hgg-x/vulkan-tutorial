@@ -747,6 +747,7 @@ class HelloVulkan
                 vertex.texCoord[1] = 1 - vertex.texCoord[1];
 
                 if (uniqueVertices.count(vertex) == 0) {
+                    // cppcheck-suppress stlFindInsert
                     uniqueVertices[vertex] = vertices.size();
                     vertices.push_back(vertex);
                 }
@@ -911,10 +912,10 @@ class HelloVulkan
         uint32_t queueFamilyIndexCount = 0;
         uint32_t *pQueueFamilyIndices = nullptr;
 
-        QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+        QueueFamilyIndices queueIndices = findQueueFamilies(physicalDevice);
 
-        uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
-        if (indices.graphicsFamily != indices.presentFamily) {
+        uint32_t queueFamilyIndices[] = {queueIndices.graphicsFamily.value(), queueIndices.presentFamily.value()};
+        if (queueIndices.graphicsFamily != queueIndices.presentFamily) {
             imageSharingMode = vk::SharingMode::eConcurrent;
             queueFamilyIndexCount = 2;
             pQueueFamilyIndices = queueFamilyIndices;
@@ -951,10 +952,11 @@ class HelloVulkan
             return {vk::Format::eB8G8R8A8Unorm, vk::ColorSpaceKHR::eSrgbNonlinear};
         }
 
-        for (const auto &availableFormat : availableFormats) {
-            if (availableFormat.format == vk::Format::eB8G8R8A8Unorm && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
-                return availableFormat;
-            }
+        auto it = std::find_if(availableFormats.begin(), availableFormats.end(),
+                               [](const auto &format) { return format.format == vk::Format::eB8G8R8A8Unorm && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear; });
+
+        if (it != availableFormats.end()) {
+            return *it;
         }
         return availableFormats[0];
     }
@@ -988,37 +990,37 @@ class HelloVulkan
 
     void createLogicalDevice()
     {
-        QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+        QueueFamilyIndices queueIndices = findQueueFamilies(physicalDevice);
 
         std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-        std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+        std::set<uint32_t> uniqueQueueFamilies = {queueIndices.graphicsFamily.value(), queueIndices.presentFamily.value()};
 
         float queuePriority = 1;
         queueCreateInfos.reserve(uniqueQueueFamilies.size());
-        for (uint32_t queueFamily : uniqueQueueFamilies) {
-            // vk::DeviceQueueCreateInfo(flags_, queueFamilyIndex_, queueCount_, pQueuePriorities_)
-            queueCreateInfos.push_back(vk::DeviceQueueCreateInfo({}, queueFamily, 1, &queuePriority));
-        }
+
+        // vk::DeviceQueueCreateInfo(flags_, queueFamilyIndex_, queueCount_, pQueuePriorities_)
+        std::transform(uniqueQueueFamilies.begin(), uniqueQueueFamilies.end(), std::back_inserter(queueCreateInfos),
+                       [&](const auto &queueFamily) { return vk::DeviceQueueCreateInfo({}, queueFamily, 1, &queuePriority); });
 
         vk::PhysicalDeviceFeatures deviceFeatures = vk::PhysicalDeviceFeatures().setSamplerAnisotropy(VK_TRUE);
 
         // vk::DeviceCreateInfo(flags_, queueCreateInfoCount_, pQueueCreateInfos_, enabledLayerCount_, ppEnabledLayerNames, enabledExtensionCount_, ppEnabledExtensionNames_, pEnabledFeatures_)
         device = physicalDevice.createDeviceUnique({{}, (uint32_t)queueCreateInfos.size(), queueCreateInfos.data(), 0, nullptr, (uint32_t)deviceExtensions.size(), deviceExtensions.data(), &deviceFeatures});
 
-        graphicsQueue = device->getQueue(indices.graphicsFamily.value(), 0);
-        presentQueue = device->getQueue(indices.presentFamily.value(), 0);
+        graphicsQueue = device->getQueue(queueIndices.graphicsFamily.value(), 0);
+        presentQueue = device->getQueue(queueIndices.presentFamily.value(), 0);
     }
 
     void pickPhysicalDevice()
     {
-        for (const auto &device : instance->enumeratePhysicalDevices()) {
-            if (isDeviceSuitable(device)) {
-                physicalDevice = device;
-                msaaSamples = getMaxUsableSampleCount();
-                return;
-            }
+        auto devices = instance->enumeratePhysicalDevices();
+        auto it = std::find_if(devices.begin(), devices.end(), [&](const auto &device) { return isDeviceSuitable(device); });
+        if (it == devices.end()) {
+            throw std::runtime_error("failed to find a suitable GPU!");
         }
-        throw std::runtime_error("failed to find a suitable GPU!");
+
+        physicalDevice = *it;
+        msaaSamples = getMaxUsableSampleCount();
     }
 
     vk::SampleCountFlagBits getMaxUsableSampleCount()
@@ -1047,7 +1049,7 @@ class HelloVulkan
         return vk::SampleCountFlagBits::e1;
     }
 
-    bool isDeviceSuitable(vk::PhysicalDevice device)
+    bool isDeviceSuitable(const vk::PhysicalDevice &device)
     {
         if (findQueueFamilies(device).isComplete() && checkDeviceExtensionSupport(device)) {
             SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
@@ -1056,12 +1058,12 @@ class HelloVulkan
         return false;
     }
 
-    SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice device)
+    SwapChainSupportDetails querySwapChainSupport(const vk::PhysicalDevice &device)
     {
         return {device.getSurfaceCapabilitiesKHR(*surface), device.getSurfaceFormatsKHR(*surface), device.getSurfacePresentModesKHR(*surface)};
     }
 
-    bool checkDeviceExtensionSupport(vk::PhysicalDevice device)
+    bool checkDeviceExtensionSupport(const vk::PhysicalDevice &device)
     {
         std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
         for (const auto &extension : device.enumerateDeviceExtensionProperties()) {
@@ -1070,29 +1072,29 @@ class HelloVulkan
         return requiredExtensions.empty();
     }
 
-    QueueFamilyIndices findQueueFamilies(vk::PhysicalDevice device)
+    QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice &device)
     {
-        QueueFamilyIndices indices;
+        QueueFamilyIndices queueIndices;
 
         int i = 0;
         for (const auto &queueFamily : device.getQueueFamilyProperties()) {
             if (queueFamily.queueCount > 0 && queueFamily.queueFlags & vk::QueueFlagBits::eGraphics) {
-                indices.graphicsFamily = i;
+                queueIndices.graphicsFamily = i;
             }
 
             VkBool32 presentSupport = 0;
             device.getSurfaceSupportKHR(i, *surface, &presentSupport);
 
             if (queueFamily.queueCount > 0 && presentSupport != 0) {
-                indices.presentFamily = i;
+                queueIndices.presentFamily = i;
             }
 
-            if (indices.isComplete()) {
+            if (queueIndices.isComplete()) {
                 break;
             }
             i++;
         }
-        return indices;
+        return queueIndices;
     }
 
     void createSurface()
