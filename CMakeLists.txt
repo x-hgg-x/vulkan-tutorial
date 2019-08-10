@@ -8,7 +8,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-# set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-extra-arg=-std=c++17;-checks=-clang-analyzer*,bugprone*,misc*,modernize*,performance*,readability*")
 
 find_package(glfw3 REQUIRED)
 find_package(Vulkan REQUIRED)
@@ -33,3 +32,7 @@ add_custom_command(TARGET vktest POST_BUILD
                            "--suppress=*:*/stb_image.h"
                            "--suppress=missingIncludeSystem"
                            "--suppress=unmatchedSuppression:*")
+
+# add_custom_command(TARGET vktest POST_BUILD
+#                    COMMAND "run-clang-tidy" "-quiet" "-extra-arg=-std=c++17"
+#                            "-checks=-clang-analyzer*,bugprone*,misc*,modernize*,performance*,readability*")
