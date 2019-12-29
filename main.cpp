@@ -952,10 +952,10 @@ class HelloVulkan
             return {vk::Format::eB8G8R8A8Unorm, vk::ColorSpaceKHR::eSrgbNonlinear};
         }
 
-        auto it = std::find_if(availableFormats.begin(), availableFormats.end(),
+        auto it = std::find_if(availableFormats.cbegin(), availableFormats.cend(),
                                [](const auto &format) { return format.format == vk::Format::eB8G8R8A8Unorm && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear; });
 
-        if (it != availableFormats.end()) {
+        if (it != availableFormats.cend()) {
             return *it;
         }
         return availableFormats[0];
@@ -999,7 +999,7 @@ class HelloVulkan
         queueCreateInfos.reserve(uniqueQueueFamilies.size());
 
         // vk::DeviceQueueCreateInfo(flags_, queueFamilyIndex_, queueCount_, pQueuePriorities_)
-        std::transform(uniqueQueueFamilies.begin(), uniqueQueueFamilies.end(), std::back_inserter(queueCreateInfos),
+        std::transform(uniqueQueueFamilies.cbegin(), uniqueQueueFamilies.cend(), std::back_inserter(queueCreateInfos),
                        [&](const auto &queueFamily) { return vk::DeviceQueueCreateInfo({}, queueFamily, 1, &queuePriority); });
 
         vk::PhysicalDeviceFeatures deviceFeatures = vk::PhysicalDeviceFeatures().setSamplerAnisotropy(VK_TRUE);
@@ -1014,8 +1014,8 @@ class HelloVulkan
     void pickPhysicalDevice()
     {
         auto devices = instance->enumeratePhysicalDevices();
-        auto it = std::find_if(devices.begin(), devices.end(), [&](const auto &device) { return isDeviceSuitable(device); });
-        if (it == devices.end()) {
+        auto it = std::find_if(devices.cbegin(), devices.cend(), [&](const auto &device) { return isDeviceSuitable(device); });
+        if (it == devices.cend()) {
             throw std::runtime_error("failed to find a suitable GPU!");
         }
 
@@ -1065,7 +1065,7 @@ class HelloVulkan
 
     bool checkDeviceExtensionSupport(const vk::PhysicalDevice &device)
     {
-        std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+        std::set<std::string> requiredExtensions(deviceExtensions.cbegin(), deviceExtensions.cend());
         for (const auto &extension : device.enumerateDeviceExtensionProperties()) {
             requiredExtensions.erase(extension.extensionName);
         }
@@ -1082,7 +1082,7 @@ class HelloVulkan
                 queueIndices.graphicsFamily = i;
             }
 
-            VkBool32 presentSupport = 0;
+            vk::Bool32 presentSupport = 0;
             device.getSurfaceSupportKHR(i, *surface, &presentSupport);
 
             if (queueFamily.queueCount > 0 && presentSupport != 0) {
@@ -1149,7 +1149,7 @@ class HelloVulkan
 
     bool checkValidationLayerSupport()
     {
-        std::set<std::string> requiredLayers(validationLayers.begin(), validationLayers.end());
+        std::set<std::string> requiredLayers(validationLayers.cbegin(), validationLayers.cend());
         for (const auto &layerProperties : vk::enumerateInstanceLayerProperties()) {
             requiredLayers.erase(layerProperties.layerName);
         }
@@ -1170,7 +1170,7 @@ class HelloVulkan
         return extensions;
     }
 
-    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT /*messageType*/, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void * /*pUserData*/)
+    static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT /*messageType*/, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void * /*pUserData*/)
     {
         std::cerr << "validation layer: (severity: 0x" << std::setfill('0') << std::setw(4) << std::hex << messageSeverity << ") " << pCallbackData->pMessage << std::endl;
         return VK_FALSE;
