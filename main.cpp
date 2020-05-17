@@ -106,9 +106,9 @@ class HelloVulkan
         glfwInit();
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-        window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
-        glfwSetWindowUserPointer(window, this);
-        glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+        m_window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+        glfwSetWindowUserPointer(m_window, this);
+        glfwSetFramebufferSizeCallback(m_window, framebufferResizeCallback);
     }
 
     void run()
@@ -119,79 +119,79 @@ class HelloVulkan
 
     ~HelloVulkan()
     {
-        glfwDestroyWindow(window);
+        glfwDestroyWindow(m_window);
         glfwTerminate();
     }
 
   private:
-    GLFWwindow *window;
+    GLFWwindow *m_window;
 
-    vk::UniqueInstance instance;
-    vk::DispatchLoaderDynamic dldy;
-    vk::UniqueHandle<vk::DebugUtilsMessengerEXT, vk::DispatchLoaderDynamic> debugMessenger;
-    vk::UniqueSurfaceKHR surface;
+    vk::UniqueInstance m_instance;
+    vk::DispatchLoaderDynamic m_dldy;
+    vk::UniqueHandle<vk::DebugUtilsMessengerEXT, vk::DispatchLoaderDynamic> m_debugMessenger;
+    vk::UniqueSurfaceKHR m_surface;
 
-    vk::PhysicalDevice physicalDevice;
-    vk::SampleCountFlagBits msaaSamples = vk::SampleCountFlagBits::e1;
-    vk::UniqueDevice device;
+    vk::PhysicalDevice m_physicalDevice;
+    vk::SampleCountFlagBits m_msaaSamples = vk::SampleCountFlagBits::e1;
+    vk::UniqueDevice m_device;
 
-    vk::Queue graphicsQueue;
-    vk::Queue presentQueue;
+    vk::Queue m_graphicsQueue;
+    vk::Queue m_presentQueue;
 
-    vk::UniqueSwapchainKHR swapChain;
-    vk::Format swapChainImageFormat;
-    vk::Extent2D swapChainExtent;
-    std::vector<vk::Image> swapChainImages;
-    std::vector<vk::UniqueImageView> swapChainImageViews;
-    std::vector<vk::UniqueFramebuffer> swapChainFramebuffers;
+    vk::UniqueSwapchainKHR m_swapChain;
+    vk::Format m_swapChainImageFormat;
+    vk::Extent2D m_swapChainExtent;
+    std::vector<vk::Image> m_swapChainImages;
+    std::vector<vk::UniqueImageView> m_swapChainImageViews;
+    std::vector<vk::UniqueFramebuffer> m_swapChainFramebuffers;
 
-    vk::UniqueRenderPass renderPass;
-    vk::UniqueDescriptorSetLayout descriptorSetLayout;
-    vk::UniquePipelineLayout pipelineLayout;
-    std::vector<vk::UniquePipeline> graphicsPipelines;
+    vk::UniqueRenderPass m_renderPass;
+    vk::UniqueDescriptorSetLayout m_descriptorSetLayout;
+    vk::UniquePipelineLayout m_pipelineLayout;
+    std::vector<vk::UniquePipeline> m_graphicsPipelines;
 
-    vk::UniqueCommandPool commandPool;
+    vk::UniqueCommandPool m_commandPool;
 
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
+    std::vector<Vertex> m_vertices;
+    std::vector<uint32_t> m_indices;
 
-    uint32_t mipLevels;
+    uint32_t m_mipLevels;
 
-    vk::UniqueDeviceMemory colorImageMemory;
-    vk::UniqueDeviceMemory depthImageMemory;
-    vk::UniqueDeviceMemory textureImageMemory;
-    vk::UniqueDeviceMemory vertexBufferMemory;
-    vk::UniqueDeviceMemory indexBufferMemory;
+    vk::UniqueDeviceMemory m_colorImageMemory;
+    vk::UniqueDeviceMemory m_depthImageMemory;
+    vk::UniqueDeviceMemory m_textureImageMemory;
+    vk::UniqueDeviceMemory m_vertexBufferMemory;
+    vk::UniqueDeviceMemory m_indexBufferMemory;
 
-    vk::UniqueImage colorImage;
-    vk::UniqueImage depthImage;
-    vk::UniqueImage textureImage;
-    vk::UniqueBuffer vertexBuffer;
-    vk::UniqueBuffer indexBuffer;
+    vk::UniqueImage m_colorImage;
+    vk::UniqueImage m_depthImage;
+    vk::UniqueImage m_textureImage;
+    vk::UniqueBuffer m_vertexBuffer;
+    vk::UniqueBuffer m_indexBuffer;
 
-    vk::UniqueImageView colorImageView;
-    vk::UniqueImageView depthImageView;
-    vk::UniqueImageView textureImageView;
-    vk::UniqueSampler textureSampler;
+    vk::UniqueImageView m_colorImageView;
+    vk::UniqueImageView m_depthImageView;
+    vk::UniqueImageView m_textureImageView;
+    vk::UniqueSampler m_textureSampler;
 
-    std::vector<vk::UniqueDeviceMemory> uniformBuffersMemory;
-    std::vector<vk::UniqueBuffer> uniformBuffers;
+    std::vector<vk::UniqueDeviceMemory> m_uniformBuffersMemory;
+    std::vector<vk::UniqueBuffer> m_uniformBuffers;
 
-    vk::UniqueDescriptorPool descriptorPool;
-    std::vector<vk::DescriptorSet> descriptorSets;
+    vk::UniqueDescriptorPool m_descriptorPool;
+    std::vector<vk::DescriptorSet> m_descriptorSets;
 
-    std::vector<vk::CommandBuffer> commandBuffers;
+    std::vector<vk::CommandBuffer> m_commandBuffers;
 
-    std::vector<vk::UniqueSemaphore> imageAvailableSemaphores;
-    std::vector<vk::UniqueSemaphore> renderFinishedSemaphores;
-    std::vector<vk::UniqueFence> inFlightFences;
-    size_t currentFrame = 0;
+    std::vector<vk::UniqueSemaphore> m_imageAvailableSemaphores;
+    std::vector<vk::UniqueSemaphore> m_renderFinishedSemaphores;
+    std::vector<vk::UniqueFence> m_inFlightFences;
+    size_t m_currentFrame = 0;
 
-    bool framebufferResized = false;
+    bool m_framebufferResized = false;
 
     static void framebufferResizeCallback(GLFWwindow *window, int /*width*/, int /*height*/)
     {
-        reinterpret_cast<HelloVulkan *>(glfwGetWindowUserPointer(window))->framebufferResized = true;
+        reinterpret_cast<HelloVulkan *>(glfwGetWindowUserPointer(window))->m_framebufferResized = true;
     }
 
     void initVulkan()
@@ -225,27 +225,27 @@ class HelloVulkan
 
     void mainLoop()
     {
-        while (glfwWindowShouldClose(window) == 0) {
-            if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-                glfwSetWindowShouldClose(window, 1);
+        while (glfwWindowShouldClose(m_window) == 0) {
+            if (glfwGetKey(m_window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+                glfwSetWindowShouldClose(m_window, 1);
             }
             glfwPollEvents();
             drawFrame();
         }
 
-        device->waitIdle();
+        m_device->waitIdle();
     }
 
     void recreateSwapChain()
     {
         int width = 0, height = 0;
         while (width == 0 || height == 0) {
-            glfwGetFramebufferSize(window, &width, &height);
+            glfwGetFramebufferSize(m_window, &width, &height);
             glfwWaitEvents();
         }
 
-        device->waitIdle();
-        device->freeCommandBuffers(*commandPool, commandBuffers);
+        m_device->waitIdle();
+        m_device->freeCommandBuffers(*m_commandPool, m_commandBuffers);
 
         createSwapChain();
         createImageViews();
@@ -262,10 +262,10 @@ class HelloVulkan
 
     void drawFrame()
     {
-        device->waitForFences({*inFlightFences[currentFrame]}, VK_TRUE, std::numeric_limits<uint64_t>::max());
+        m_device->waitForFences({*m_inFlightFences[m_currentFrame]}, VK_TRUE, std::numeric_limits<uint64_t>::max());
 
         uint32_t imageIndex;
-        auto result = device->acquireNextImageKHR(*swapChain, std::numeric_limits<uint64_t>::max(), *imageAvailableSemaphores[currentFrame], {}, &imageIndex);
+        auto result = m_device->acquireNextImageKHR(*m_swapChain, std::numeric_limits<uint64_t>::max(), *m_imageAvailableSemaphores[m_currentFrame], {}, &imageIndex);
 
         if (result == vk::Result::eErrorOutOfDateKHR) {
             recreateSwapChain();
@@ -275,26 +275,26 @@ class HelloVulkan
             throw std::runtime_error("failed to acquire swap chain image!");
         }
 
-        device->resetFences({*inFlightFences[currentFrame]});
+        m_device->resetFences({*m_inFlightFences[m_currentFrame]});
 
         updateUniformBuffer(imageIndex);
 
         vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
         // vk::SubmitInfo(waitSemaphoreCount_, pWaitSemaphores_, pWaitDstStageMask_, commandBufferCount_, pCommandBuffers_, signalSemaphoreCount_, pSignalSemaphores_)
-        graphicsQueue.submit({{1, &*imageAvailableSemaphores[currentFrame], &waitStage, 1, &commandBuffers[imageIndex], 1, &*renderFinishedSemaphores[currentFrame]}}, *inFlightFences[currentFrame]);
+        m_graphicsQueue.submit({{1, &*m_imageAvailableSemaphores[m_currentFrame], &waitStage, 1, &m_commandBuffers[imageIndex], 1, &*m_renderFinishedSemaphores[m_currentFrame]}}, *m_inFlightFences[m_currentFrame]);
 
-        auto presentInfo = vk::PresentInfoKHR(1, &*renderFinishedSemaphores[currentFrame], 1, &*swapChain, &imageIndex, nullptr);
-        result = presentQueue.presentKHR(&presentInfo);
+        auto presentInfo = vk::PresentInfoKHR(1, &*m_renderFinishedSemaphores[m_currentFrame], 1, &*m_swapChain, &imageIndex, nullptr);
+        result = m_presentQueue.presentKHR(&presentInfo);
 
-        if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || framebufferResized) {
-            framebufferResized = false;
+        if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || m_framebufferResized) {
+            m_framebufferResized = false;
             recreateSwapChain();
         } else if (result != vk::Result::eSuccess) {
             throw std::runtime_error("failed to present swap chain image!");
         }
 
-        currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+        m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
 
     void updateUniformBuffer(uint32_t currentImage)
@@ -307,36 +307,36 @@ class HelloVulkan
         UniformBufferObject ubo = {
             glm::rotate(glm::mat4(1), time * glm::radians(90.0f), glm::vec3(0, 0, 1)),
             glm::lookAt(glm::vec3(2, 2, 2.), glm::vec3(0, 0, 0), glm::vec3(0, 0, 1)),
-            glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f)};
+            glm::perspective(glm::radians(45.0f), m_swapChainExtent.width / (float)m_swapChainExtent.height, 0.1f, 10.0f)};
 
         ubo.proj[1][1] *= -1;
 
-        auto data = device->mapMemory(*uniformBuffersMemory[currentImage], 0, sizeof(ubo), {});
+        auto data = m_device->mapMemory(*m_uniformBuffersMemory[currentImage], 0, sizeof(ubo), {});
         memcpy(data, &ubo, sizeof(ubo));
-        device->unmapMemory(*uniformBuffersMemory[currentImage]);
+        m_device->unmapMemory(*m_uniformBuffersMemory[currentImage]);
     }
 
     void createSyncObjects()
     {
-        imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+        m_imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+        m_renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+        m_inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            imageAvailableSemaphores[i] = device->createSemaphoreUnique({});
-            renderFinishedSemaphores[i] = device->createSemaphoreUnique({});
-            inFlightFences[i] = device->createFenceUnique({vk::FenceCreateFlagBits::eSignaled});
+            m_imageAvailableSemaphores[i] = m_device->createSemaphoreUnique({});
+            m_renderFinishedSemaphores[i] = m_device->createSemaphoreUnique({});
+            m_inFlightFences[i] = m_device->createFenceUnique({vk::FenceCreateFlagBits::eSignaled});
         }
     }
 
     void createCommandBuffers()
     {
         // vk::CommandBufferAllocateInfo(commandPool_, level_, commandBufferCount_)
-        commandBuffers = device->allocateCommandBuffers({*commandPool, vk::CommandBufferLevel::ePrimary, (uint32_t)swapChainFramebuffers.size()});
+        m_commandBuffers = m_device->allocateCommandBuffers({*m_commandPool, vk::CommandBufferLevel::ePrimary, (uint32_t)m_swapChainFramebuffers.size()});
 
-        for (size_t i = 0; i < commandBuffers.size(); i++) {
+        for (size_t i = 0; i < m_commandBuffers.size(); i++) {
             // vk::CommandBufferBeginInfo(flags_, pInheritanceInfo_)
-            commandBuffers[i].begin({vk::CommandBufferUsageFlagBits::eSimultaneousUse, nullptr});
+            m_commandBuffers[i].begin({vk::CommandBufferUsageFlagBits::eSimultaneousUse, nullptr});
 
             std::vector<vk::ClearValue> clearValues = {
                 vk::ClearColorValue(std::array{0.0f, 0.0f, 0.0f, 1.0f}),
@@ -344,35 +344,35 @@ class HelloVulkan
             };
 
             // vk::RenderPassBeginInfo(renderPass_, framebuffer_, renderArea_, clearValueCount_, pClearValues_)
-            auto renderPassInfo = vk::RenderPassBeginInfo(*renderPass, *swapChainFramebuffers[i], {{0, 0}, swapChainExtent}, clearValues.size(), clearValues.data());
-            commandBuffers[i].beginRenderPass(&renderPassInfo, vk::SubpassContents::eInline);
-            commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipelines[0]);
-            commandBuffers[i].bindVertexBuffers(0, *vertexBuffer, {0});
-            commandBuffers[i].bindIndexBuffer(*indexBuffer, 0, vk::IndexType::eUint32);
-            commandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *pipelineLayout, 0, descriptorSets[i], {});
-            commandBuffers[i].drawIndexed(indices.size(), 1, 0, 0, 0);
-            commandBuffers[i].endRenderPass();
-            commandBuffers[i].end();
+            auto renderPassInfo = vk::RenderPassBeginInfo(*m_renderPass, *m_swapChainFramebuffers[i], {{0, 0}, m_swapChainExtent}, clearValues.size(), clearValues.data());
+            m_commandBuffers[i].beginRenderPass(&renderPassInfo, vk::SubpassContents::eInline);
+            m_commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, *m_graphicsPipelines[0]);
+            m_commandBuffers[i].bindVertexBuffers(0, *m_vertexBuffer, {0});
+            m_commandBuffers[i].bindIndexBuffer(*m_indexBuffer, 0, vk::IndexType::eUint32);
+            m_commandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *m_pipelineLayout, 0, m_descriptorSets[i], {});
+            m_commandBuffers[i].drawIndexed(m_indices.size(), 1, 0, 0, 0);
+            m_commandBuffers[i].endRenderPass();
+            m_commandBuffers[i].end();
         }
     }
 
     void createDescriptorSets()
     {
-        auto layouts = std::vector<vk::DescriptorSetLayout>(swapChainImages.size(), *descriptorSetLayout);
+        auto layouts = std::vector<vk::DescriptorSetLayout>(m_swapChainImages.size(), *m_descriptorSetLayout);
 
         // vk::DescriptorSetAllocateInfo(descriptorPool_, descriptorSetCount_, pSetLayouts_)
-        descriptorSets = device->allocateDescriptorSets({*descriptorPool, (uint32_t)swapChainImages.size(), layouts.data()});
+        m_descriptorSets = m_device->allocateDescriptorSets({*m_descriptorPool, (uint32_t)m_swapChainImages.size(), layouts.data()});
 
-        for (size_t i = 0; i < swapChainImages.size(); i++) {
+        for (size_t i = 0; i < m_swapChainImages.size(); i++) {
             // vk::DescriptorBufferInfo(buffer_, offset_, range_)
-            auto bufferInfo = vk::DescriptorBufferInfo(*uniformBuffers[i], 0, sizeof(UniformBufferObject));
+            auto bufferInfo = vk::DescriptorBufferInfo(*m_uniformBuffers[i], 0, sizeof(UniformBufferObject));
             // vk::DescriptorImageInfo(sampler_, imageView_, imageLayout_)
-            auto imageInfo = vk::DescriptorImageInfo(*textureSampler, *textureImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
+            auto imageInfo = vk::DescriptorImageInfo(*m_textureSampler, *m_textureImageView, vk::ImageLayout::eShaderReadOnlyOptimal);
 
             // vk::WriteDescriptorSet(dstSet_, dstBinding_, dstArrayElement_, descriptorCount_, descriptorType_, pImageInfo_, pBufferInfo_, pTexelBufferView_)
-            device->updateDescriptorSets(
-                {{descriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &bufferInfo, nullptr},
-                 {descriptorSets[i], 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &imageInfo, nullptr, nullptr}},
+            m_device->updateDescriptorSets(
+                {{m_descriptorSets[i], 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &bufferInfo, nullptr},
+                 {m_descriptorSets[i], 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &imageInfo, nullptr, nullptr}},
                 {});
         }
     }
@@ -381,68 +381,68 @@ class HelloVulkan
     {
         // vk::DescriptorPoolSize(type_, descriptorCount_)
         std::vector<vk::DescriptorPoolSize> poolSizes = {
-            {vk::DescriptorType::eUniformBuffer, (uint32_t)swapChainImages.size()},
-            {vk::DescriptorType::eCombinedImageSampler, (uint32_t)swapChainImages.size()}};
+            {vk::DescriptorType::eUniformBuffer, (uint32_t)m_swapChainImages.size()},
+            {vk::DescriptorType::eCombinedImageSampler, (uint32_t)m_swapChainImages.size()}};
 
         // vk::DescriptorPoolCreateInfo(flags_, maxSets_, poolSizeCount_, pPoolSizes_)
-        descriptorPool = device->createDescriptorPoolUnique({{}, (uint32_t)swapChainImages.size(), (uint32_t)poolSizes.size(), poolSizes.data()});
+        m_descriptorPool = m_device->createDescriptorPoolUnique({{}, (uint32_t)m_swapChainImages.size(), (uint32_t)poolSizes.size(), poolSizes.data()});
     }
 
     void createVertexBuffer()
     {
-        vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+        vk::DeviceSize bufferSize = sizeof(m_vertices[0]) * m_vertices.size();
         vk::UniqueDeviceMemory stagingBufferMemory;
         vk::UniqueBuffer stagingBuffer;
 
         createUniqueBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
 
-        auto data = device->mapMemory(*stagingBufferMemory, 0, bufferSize, {});
-        memcpy(data, vertices.data(), bufferSize);
-        device->unmapMemory(*stagingBufferMemory);
+        auto data = m_device->mapMemory(*stagingBufferMemory, 0, bufferSize, {});
+        memcpy(data, m_vertices.data(), bufferSize);
+        m_device->unmapMemory(*stagingBufferMemory);
 
-        createUniqueBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, vertexBuffer, vertexBufferMemory);
-        copyBuffer(*stagingBuffer, *vertexBuffer, bufferSize);
+        createUniqueBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, m_vertexBuffer, m_vertexBufferMemory);
+        copyBuffer(*stagingBuffer, *m_vertexBuffer, bufferSize);
     }
 
     void createIndexBuffer()
     {
-        vk::DeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+        vk::DeviceSize bufferSize = sizeof(m_indices[0]) * m_indices.size();
         vk::UniqueDeviceMemory stagingBufferMemory;
         vk::UniqueBuffer stagingBuffer;
 
         createUniqueBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
 
-        auto data = device->mapMemory(*stagingBufferMemory, 0, bufferSize, {});
-        memcpy(data, indices.data(), bufferSize);
-        device->unmapMemory(*stagingBufferMemory);
+        auto data = m_device->mapMemory(*stagingBufferMemory, 0, bufferSize, {});
+        memcpy(data, m_indices.data(), bufferSize);
+        m_device->unmapMemory(*stagingBufferMemory);
 
-        createUniqueBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, indexBuffer, indexBufferMemory);
-        copyBuffer(*stagingBuffer, *indexBuffer, bufferSize);
+        createUniqueBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, m_indexBuffer, m_indexBufferMemory);
+        copyBuffer(*stagingBuffer, *m_indexBuffer, bufferSize);
     }
 
     void createUniformBuffers()
     {
         vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
 
-        uniformBuffers.resize(swapChainImages.size());
-        uniformBuffersMemory.resize(swapChainImages.size());
+        m_uniformBuffers.resize(m_swapChainImages.size());
+        m_uniformBuffersMemory.resize(m_swapChainImages.size());
 
-        for (size_t i = 0; i < swapChainImages.size(); i++) {
-            createUniqueBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, uniformBuffers[i], uniformBuffersMemory[i]);
+        for (size_t i = 0; i < m_swapChainImages.size(); i++) {
+            createUniqueBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, m_uniformBuffers[i], m_uniformBuffersMemory[i]);
         }
     }
 
     void createUniqueBuffer(vk::DeviceSize size, const vk::BufferUsageFlags &usage, const vk::MemoryPropertyFlags &properties, vk::UniqueBuffer &buffer, vk::UniqueDeviceMemory &bufferMemory)
     {
         // vk::BufferCreateInfo(flags_, size_, usage_, sharingMode_, queueFamilyIndexCount_, pQueueFamilyIndices_)
-        buffer = device->createBufferUnique({{}, size, usage, vk::SharingMode::eExclusive, 0, nullptr});
+        buffer = m_device->createBufferUnique({{}, size, usage, vk::SharingMode::eExclusive, 0, nullptr});
 
-        auto memRequirements = device->getBufferMemoryRequirements(*buffer);
+        auto memRequirements = m_device->getBufferMemoryRequirements(*buffer);
         uint32_t memoryType = findMemoryType(memRequirements.memoryTypeBits, properties);
 
         // vk::MemoryAllocateInfo(allocationSize_, memoryTypeIndex_)
-        bufferMemory = device->allocateMemoryUnique({memRequirements.size, memoryType});
-        device->bindBufferMemory(*buffer, *bufferMemory, 0);
+        bufferMemory = m_device->allocateMemoryUnique({memRequirements.size, memoryType});
+        m_device->bindBufferMemory(*buffer, *bufferMemory, 0);
     }
 
     void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size)
@@ -456,7 +456,7 @@ class HelloVulkan
 
     uint32_t findMemoryType(uint32_t typeFilter, const vk::MemoryPropertyFlags &properties)
     {
-        auto memProperties = physicalDevice.getMemoryProperties();
+        auto memProperties = m_physicalDevice.getMemoryProperties();
         for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
             if ((typeFilter & (1 << i)) != 0 && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
                 return i;
@@ -467,7 +467,7 @@ class HelloVulkan
 
     void createTextureSampler()
     {
-        textureSampler = device->createSamplerUnique(
+        m_textureSampler = m_device->createSamplerUnique(
             {
                 {},                               // flags_
                 vk::Filter::eLinear,              // magFilter_
@@ -482,7 +482,7 @@ class HelloVulkan
                 VK_FALSE,                         // compareEnable_
                 vk::CompareOp::eAlways,           // compareOp_
                 0,                                // minLod_
-                (float)mipLevels,                 // maxLod_
+                (float)m_mipLevels,               // maxLod_
                 vk::BorderColor::eIntOpaqueBlack, // borderColor_
                 VK_FALSE                          // unnormalizedCoordinates_
             });
@@ -490,7 +490,7 @@ class HelloVulkan
 
     void createTextureImageView()
     {
-        textureImageView = createUniqueImageView(*textureImage, vk::Format::eR8G8B8A8Unorm, vk::ImageAspectFlagBits::eColor, mipLevels);
+        m_textureImageView = createUniqueImageView(*m_textureImage, vk::Format::eR8G8B8A8Unorm, vk::ImageAspectFlagBits::eColor, m_mipLevels);
     }
 
     void createTextureImage()
@@ -501,7 +501,7 @@ class HelloVulkan
             throw std::runtime_error("failed to load texture image!");
         }
 
-        mipLevels = 1 + std::floor(std::log2(std::max(texWidth, texHeight)));
+        m_mipLevels = 1 + std::floor(std::log2(std::max(texWidth, texHeight)));
 
         vk::DeviceSize imageSize = texWidth * texHeight * STBI_rgb_alpha;
         vk::UniqueDeviceMemory stagingBufferMemory;
@@ -509,21 +509,21 @@ class HelloVulkan
 
         createUniqueBuffer(imageSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
 
-        auto data = device->mapMemory(*stagingBufferMemory, 0, imageSize, {});
+        auto data = m_device->mapMemory(*stagingBufferMemory, 0, imageSize, {});
         memcpy(data, pixels, imageSize);
-        device->unmapMemory(*stagingBufferMemory);
+        m_device->unmapMemory(*stagingBufferMemory);
         stbi_image_free(pixels);
 
-        createUniqueImage(texWidth, texHeight, mipLevels, vk::SampleCountFlagBits::e1, vk::Format::eR8G8B8A8Unorm, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, textureImageMemory);
-        transitionImageLayout(*textureImage, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, mipLevels);
-        copyBufferToImage(*stagingBuffer, *textureImage, texWidth, texHeight);
-        generateMipmaps(*textureImage, vk::Format::eR8G8B8A8Unorm, texWidth, texHeight, mipLevels);
+        createUniqueImage(texWidth, texHeight, m_mipLevels, vk::SampleCountFlagBits::e1, vk::Format::eR8G8B8A8Unorm, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, m_textureImage, m_textureImageMemory);
+        transitionImageLayout(*m_textureImage, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, m_mipLevels);
+        copyBufferToImage(*stagingBuffer, *m_textureImage, texWidth, texHeight);
+        generateMipmaps(*m_textureImage, vk::Format::eR8G8B8A8Unorm, texWidth, texHeight, m_mipLevels);
         // transitioned to vk::ImageLayout::eShaderReadOnlyOptimal while generating mipmaps
     }
 
     void generateMipmaps(vk::Image image, vk::Format imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels)
     {
-        if (!(physicalDevice.getFormatProperties(imageFormat).optimalTilingFeatures & vk::FormatFeatureFlagBits::eSampledImageFilterLinear)) {
+        if (!(m_physicalDevice.getFormatProperties(imageFormat).optimalTilingFeatures & vk::FormatFeatureFlagBits::eSampledImageFilterLinear)) {
             throw std::runtime_error("texture image format does not support linear blitting!");
         }
 
@@ -579,9 +579,9 @@ class HelloVulkan
     {
         vk::Format depthFormat = findDepthFormat();
 
-        createUniqueImage(swapChainExtent.width, swapChainExtent.height, 1, msaaSamples, depthFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal, depthImage, depthImageMemory);
-        depthImageView = createUniqueImageView(*depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth, 1);
-        transitionImageLayout(*depthImage, depthFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal, 1);
+        createUniqueImage(m_swapChainExtent.width, m_swapChainExtent.height, 1, m_msaaSamples, depthFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal, m_depthImage, m_depthImageMemory);
+        m_depthImageView = createUniqueImageView(*m_depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth, 1);
+        transitionImageLayout(*m_depthImage, depthFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal, 1);
     }
 
     vk::Format findDepthFormat()
@@ -596,7 +596,7 @@ class HelloVulkan
     {
 
         for (const auto &format : candidates) {
-            auto props = physicalDevice.getFormatProperties(format);
+            auto props = m_physicalDevice.getFormatProperties(format);
 
             if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features) {
                 return format;
@@ -610,22 +610,22 @@ class HelloVulkan
 
     void createColorResources()
     {
-        createUniqueImage(swapChainExtent.width, swapChainExtent.height, 1, msaaSamples, swapChainImageFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal, colorImage, colorImageMemory);
-        colorImageView = createUniqueImageView(*colorImage, swapChainImageFormat, vk::ImageAspectFlagBits ::eColor, 1);
-        transitionImageLayout(*colorImage, swapChainImageFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal, 1);
+        createUniqueImage(m_swapChainExtent.width, m_swapChainExtent.height, 1, m_msaaSamples, m_swapChainImageFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal, m_colorImage, m_colorImageMemory);
+        m_colorImageView = createUniqueImageView(*m_colorImage, m_swapChainImageFormat, vk::ImageAspectFlagBits ::eColor, 1);
+        transitionImageLayout(*m_colorImage, m_swapChainImageFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal, 1);
     }
 
     void createUniqueImage(uint32_t width, uint32_t height, uint32_t mipLevels, vk::SampleCountFlagBits numSamples, vk::Format format, vk::ImageTiling tiling, const vk::ImageUsageFlags &usage, const vk::MemoryPropertyFlags &properties, vk::UniqueImage &image, vk::UniqueDeviceMemory &imageMemory)
     {
         // vk::ImageCreateInfo(flags_, imageType_, format_, vk::Extent3D(width_, height_, depth_), mipLevels_, arrayLayers_, samples_, tiling_, usage_, sharingMode_, queueFamilyIndexCount_, pQueueFamilyIndices_, initialLayout_)
-        image = device->createImageUnique({{}, vk::ImageType::e2D, format, {width, height, 1U}, mipLevels, 1, numSamples, tiling, usage, vk::SharingMode::eExclusive, 0, nullptr, vk::ImageLayout::eUndefined});
+        image = m_device->createImageUnique({{}, vk::ImageType::e2D, format, {width, height, 1U}, mipLevels, 1, numSamples, tiling, usage, vk::SharingMode::eExclusive, 0, nullptr, vk::ImageLayout::eUndefined});
 
-        auto memRequirements = device->getImageMemoryRequirements(*image);
+        auto memRequirements = m_device->getImageMemoryRequirements(*image);
         uint32_t memoryType = findMemoryType(memRequirements.memoryTypeBits, properties);
 
         // vk::MemoryAllocateInfo(allocationSize_, memoryTypeIndex_)
-        imageMemory = device->allocateMemoryUnique({memRequirements.size, memoryType});
-        device->bindImageMemory(*image, *imageMemory, 0);
+        imageMemory = m_device->allocateMemoryUnique({memRequirements.size, memoryType});
+        m_device->bindImageMemory(*image, *imageMemory, 0);
     }
 
     void transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels)
@@ -691,7 +691,7 @@ class HelloVulkan
     std::vector<vk::UniqueCommandBuffer> beginSingleTimeCommands()
     {
         // vk::CommandBufferAllocateInfo(commandPool_, level_, commandBufferCount_)
-        auto uniqueCommandBuffers = device->allocateCommandBuffersUnique({*commandPool, vk::CommandBufferLevel::ePrimary, 1});
+        auto uniqueCommandBuffers = m_device->allocateCommandBuffersUnique({*m_commandPool, vk::CommandBufferLevel::ePrimary, 1});
 
         // vk::CommandBufferBeginInfo(flags_, pInheritanceInfo_)
         uniqueCommandBuffers[0]->begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit, nullptr});
@@ -703,25 +703,25 @@ class HelloVulkan
         uniqueCommandBuffers[0]->end();
 
         // vk::SubmitInfo(waitSemaphoreCount_, pWaitSemaphores_, pWaitDstStageMask_, commandBufferCount_, pCommandBuffers_, signalSemaphoreCount_, pSignalSemaphores_)
-        graphicsQueue.submit({{0, nullptr, nullptr, 1, &*uniqueCommandBuffers[0], 0, nullptr}}, nullptr);
-        graphicsQueue.waitIdle();
+        m_graphicsQueue.submit({{0, nullptr, nullptr, 1, &*uniqueCommandBuffers[0], 0, nullptr}}, nullptr);
+        m_graphicsQueue.waitIdle();
     }
 
     void createCommandPool()
     {
         // vk::CommandPoolCreateInfo(flags_, queueFamilyIndex_)
-        commandPool = device->createCommandPoolUnique({{}, findQueueFamilies(physicalDevice).graphicsFamily.value()});
+        m_commandPool = m_device->createCommandPoolUnique({{}, findQueueFamilies(m_physicalDevice).graphicsFamily.value()});
     }
 
     void createFramebuffers()
     {
-        swapChainFramebuffers.resize(swapChainImageViews.size());
-        for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+        m_swapChainFramebuffers.resize(m_swapChainImageViews.size());
+        for (size_t i = 0; i < m_swapChainImageViews.size(); i++) {
             // colorAttachment, depthAttachment, colorAttachmentResolve
-            std::array attachments = {*colorImageView, *depthImageView, *swapChainImageViews[i]};
+            std::array attachments = {*m_colorImageView, *m_depthImageView, *m_swapChainImageViews[i]};
 
             // vk::FramebufferCreateInfo(flags_, renderPass_, attachmentCount_, pAttachments_, width_, height_, layers_)
-            swapChainFramebuffers[i] = device->createFramebufferUnique({{}, *renderPass, (uint32_t)attachments.size(), attachments.data(), swapChainExtent.width, swapChainExtent.height, 1});
+            m_swapChainFramebuffers[i] = m_device->createFramebufferUnique({{}, *m_renderPass, (uint32_t)attachments.size(), attachments.data(), m_swapChainExtent.width, m_swapChainExtent.height, 1});
         }
     }
 
@@ -748,10 +748,10 @@ class HelloVulkan
 
                 if (uniqueVertices.count(vertex) == 0) {
                     // cppcheck-suppress stlFindInsert
-                    uniqueVertices[vertex] = vertices.size();
-                    vertices.push_back(vertex);
+                    uniqueVertices[vertex] = m_vertices.size();
+                    m_vertices.push_back(vertex);
                 }
-                indices.push_back(uniqueVertices[vertex]);
+                m_indices.push_back(uniqueVertices[vertex]);
             }
         }
     }
@@ -776,9 +776,9 @@ class HelloVulkan
         auto inputAssembly = vk::PipelineInputAssemblyStateCreateInfo({}, vk::PrimitiveTopology::eTriangleList, VK_FALSE);
 
         // vk::Viewport(x_, y_, width_, height_, minDepth_, maxDepth_)
-        auto viewport = vk::Viewport(0, 0, swapChainExtent.width, swapChainExtent.height, 0, 1);
+        auto viewport = vk::Viewport(0, 0, m_swapChainExtent.width, m_swapChainExtent.height, 0, 1);
         // vk::Rect2D(vk::Offset2D(x_, y_), extent_)
-        auto scissor = vk::Rect2D({0, 0}, swapChainExtent);
+        auto scissor = vk::Rect2D({0, 0}, m_swapChainExtent);
         // vk::PipelineViewportStateCreateInfo(flags_, viewportCount_, pViewports_, scissorCount_, pScissors_)
         auto viewportState = vk::PipelineViewportStateCreateInfo({}, 1, &viewport, 1, &scissor);
 
@@ -786,7 +786,7 @@ class HelloVulkan
         auto rasterizer = vk::PipelineRasterizationStateCreateInfo({}, VK_FALSE, VK_FALSE, vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise, VK_FALSE, 0, 0, 0, 1);
 
         // vk::PipelineMultisampleStateCreateInfo(flags_, rasterizationSamples_, sampleShadingEnable_, minSampleShading_, pSampleMask_, alphaToCoverageEnable_, alphaToOneEnable_)
-        auto multisampling = vk::PipelineMultisampleStateCreateInfo({}, msaaSamples, VK_FALSE, 0, nullptr, VK_FALSE, VK_FALSE);
+        auto multisampling = vk::PipelineMultisampleStateCreateInfo({}, m_msaaSamples, VK_FALSE, 0, nullptr, VK_FALSE, VK_FALSE);
 
         // vk::PipelineDepthStencilStateCreateInfo(flags_, depthTestEnable_, depthWriteEnable_, depthCompareOp_, depthBoundsTestEnable_, stencilTestEnable_, front_, back_, minDepthBounds_, maxDepthBounds_)
         auto depthStencil = vk::PipelineDepthStencilStateCreateInfo({}, VK_TRUE, VK_TRUE, vk::CompareOp::eLess, VK_FALSE, VK_FALSE, {}, {}, 0, 0);
@@ -802,9 +802,9 @@ class HelloVulkan
         auto colorBlending = vk::PipelineColorBlendStateCreateInfo({}, VK_FALSE, vk::LogicOp::eCopy, 1, &colorBlendAttachment, {0, 0, 0, 0});
 
         // vk::PipelineLayoutCreateInfo(flags_, setLayoutCount_, pSetLayouts_, pushConstantRangeCount_, pPushConstantRanges_)
-        pipelineLayout = device->createPipelineLayoutUnique({{}, 1, &*descriptorSetLayout, 0, nullptr});
+        m_pipelineLayout = m_device->createPipelineLayoutUnique({{}, 1, &*m_descriptorSetLayout, 0, nullptr});
 
-        graphicsPipelines = device->createGraphicsPipelinesUnique(
+        m_graphicsPipelines = m_device->createGraphicsPipelinesUnique(
             vk::PipelineCache(),
             {{
                 {},                            // flags_
@@ -819,8 +819,8 @@ class HelloVulkan
                 &depthStencil,                 // pDepthStencilState_
                 &colorBlending,                // pColorBlendState_
                 nullptr,                       // pDynamicState_
-                *pipelineLayout,               // layout_
-                *renderPass,                   // renderPass_
+                *m_pipelineLayout,             // layout_
+                *m_renderPass,                 // renderPass_
                 0,                             // subpass_
                 nullptr,                       // basePipelineHandle_
                 -1                             // basePipelineIndex_
@@ -840,7 +840,7 @@ class HelloVulkan
         file.close();
 
         // vk::ShaderModuleCreateInfo(flags_, codeSize_, pCode_)
-        return device->createShaderModuleUnique({{}, buffer.size(), reinterpret_cast<const uint32_t *>(buffer.data())});
+        return m_device->createShaderModuleUnique({{}, buffer.size(), reinterpret_cast<const uint32_t *>(buffer.data())});
     }
 
     void createDescriptorSetLayout()
@@ -851,16 +851,16 @@ class HelloVulkan
             {1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment, nullptr}};
 
         // vk::DescriptorSetLayoutCreateInfo(flags_, bindingCount_, pBindings_)
-        descriptorSetLayout = device->createDescriptorSetLayoutUnique({{}, (uint32_t)bindings.size(), bindings.data()});
+        m_descriptorSetLayout = m_device->createDescriptorSetLayoutUnique({{}, (uint32_t)bindings.size(), bindings.data()});
     }
 
     void createRenderPass()
     {
         // vk::AttachmentDescription(flags_, format_, samples_, loadOp_, storeOp_, stencilLoadOp_, stencilStoreOp_, initialLayout_, finalLayout_)
         std::vector<vk::AttachmentDescription> attachments = {
-            /* colorAttachment*/ {{}, swapChainImageFormat, msaaSamples, vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eStore, vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal},
-            /* depthAttachment*/ {{}, findDepthFormat(), msaaSamples, vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eDontCare, vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal},
-            /* colorAttachmentResolve*/ {{}, swapChainImageFormat, vk::SampleCountFlagBits::e1, vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eStore, vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR}};
+            /* colorAttachment*/ {{}, m_swapChainImageFormat, m_msaaSamples, vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eStore, vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal},
+            /* depthAttachment*/ {{}, findDepthFormat(), m_msaaSamples, vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eDontCare, vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal},
+            /* colorAttachmentResolve*/ {{}, m_swapChainImageFormat, vk::SampleCountFlagBits::e1, vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eStore, vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare, vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR}};
 
         // vk::AttachmentReference(attachment_, layout_)
         std::vector<vk::AttachmentReference> attachmentRefs = {
@@ -878,26 +878,26 @@ class HelloVulkan
             {}, vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
 
         // vk::RenderPassCreateInfo(flags_, attachmentCount_, pAttachments_, subpassCount_, pSubpasses_, dependencyCount_, pDependencies_)
-        renderPass = device->createRenderPassUnique({{}, (uint32_t)attachments.size(), attachments.data(), 1, &subpass, 1, &dependency});
+        m_renderPass = m_device->createRenderPassUnique({{}, (uint32_t)attachments.size(), attachments.data(), 1, &subpass, 1, &dependency});
     }
 
     void createImageViews()
     {
-        swapChainImageViews.resize(swapChainImages.size());
-        for (size_t i = 0; i < swapChainImages.size(); i++) {
-            swapChainImageViews[i] = createUniqueImageView(swapChainImages[i], swapChainImageFormat, vk::ImageAspectFlagBits::eColor, 1);
+        m_swapChainImageViews.resize(m_swapChainImages.size());
+        for (size_t i = 0; i < m_swapChainImages.size(); i++) {
+            m_swapChainImageViews[i] = createUniqueImageView(m_swapChainImages[i], m_swapChainImageFormat, vk::ImageAspectFlagBits::eColor, 1);
         }
     }
 
     vk::UniqueImageView createUniqueImageView(vk::Image image, vk::Format format, const vk::ImageAspectFlags &aspectFlags, uint32_t mipLevels)
     {
         // vk::ImageViewCreateInfo(flags_, image_, viewType_, format_, components_, vk::ImageSubresourceRange(aspectMask_, baseMipLevel_, levelCount_, baseArrayLayer_, layerCount_))
-        return device->createImageViewUnique({{}, image, vk::ImageViewType::e2D, format, {}, {aspectFlags, 0, mipLevels, 0, 1}});
+        return m_device->createImageViewUnique({{}, image, vk::ImageViewType::e2D, format, {}, {aspectFlags, 0, mipLevels, 0, 1}});
     }
 
     void createSwapChain()
     {
-        SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
+        SwapChainSupportDetails swapChainSupport = querySwapChainSupport(m_physicalDevice);
 
         vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
         vk::PresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
@@ -912,7 +912,7 @@ class HelloVulkan
         uint32_t queueFamilyIndexCount = 0;
         uint32_t *pQueueFamilyIndices = nullptr;
 
-        QueueFamilyIndices queueIndices = findQueueFamilies(physicalDevice);
+        QueueFamilyIndices queueIndices = findQueueFamilies(m_physicalDevice);
 
         uint32_t queueFamilyIndices[] = {queueIndices.graphicsFamily.value(), queueIndices.presentFamily.value()};
         if (queueIndices.graphicsFamily != queueIndices.presentFamily) {
@@ -921,10 +921,10 @@ class HelloVulkan
             pQueueFamilyIndices = queueFamilyIndices;
         }
 
-        swapChain = device->createSwapchainKHRUnique(
+        m_swapChain = m_device->createSwapchainKHRUnique(
             {
                 {},                                             // flags_
-                *surface,                                       // surface_
+                *m_surface,                                     // surface_
                 imageCount,                                     // minImageCount_
                 surfaceFormat.format,                           // imageFormat_
                 surfaceFormat.colorSpace,                       // imageColorSpace_
@@ -941,9 +941,9 @@ class HelloVulkan
                 nullptr                                         // oldSwapchain_
             });
 
-        swapChainImages = device->getSwapchainImagesKHR(*swapChain);
-        swapChainImageFormat = surfaceFormat.format;
-        swapChainExtent = extent;
+        m_swapChainImages = m_device->getSwapchainImagesKHR(*m_swapChain);
+        m_swapChainImageFormat = surfaceFormat.format;
+        m_swapChainExtent = extent;
     }
 
     vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats)
@@ -982,7 +982,7 @@ class HelloVulkan
         }
 
         int width, height;
-        glfwGetFramebufferSize(window, &width, &height);
+        glfwGetFramebufferSize(m_window, &width, &height);
 
         return {std::clamp((uint32_t)width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
                 std::clamp((uint32_t)height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)};
@@ -990,7 +990,7 @@ class HelloVulkan
 
     void createLogicalDevice()
     {
-        QueueFamilyIndices queueIndices = findQueueFamilies(physicalDevice);
+        QueueFamilyIndices queueIndices = findQueueFamilies(m_physicalDevice);
 
         std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
         std::set<uint32_t> uniqueQueueFamilies = {queueIndices.graphicsFamily.value(), queueIndices.presentFamily.value()};
@@ -1005,27 +1005,27 @@ class HelloVulkan
         vk::PhysicalDeviceFeatures deviceFeatures = vk::PhysicalDeviceFeatures().setSamplerAnisotropy(VK_TRUE);
 
         // vk::DeviceCreateInfo(flags_, queueCreateInfoCount_, pQueueCreateInfos_, enabledLayerCount_, ppEnabledLayerNames, enabledExtensionCount_, ppEnabledExtensionNames_, pEnabledFeatures_)
-        device = physicalDevice.createDeviceUnique({{}, (uint32_t)queueCreateInfos.size(), queueCreateInfos.data(), 0, nullptr, (uint32_t)deviceExtensions.size(), deviceExtensions.data(), &deviceFeatures});
+        m_device = m_physicalDevice.createDeviceUnique({{}, (uint32_t)queueCreateInfos.size(), queueCreateInfos.data(), 0, nullptr, (uint32_t)deviceExtensions.size(), deviceExtensions.data(), &deviceFeatures});
 
-        graphicsQueue = device->getQueue(queueIndices.graphicsFamily.value(), 0);
-        presentQueue = device->getQueue(queueIndices.presentFamily.value(), 0);
+        m_graphicsQueue = m_device->getQueue(queueIndices.graphicsFamily.value(), 0);
+        m_presentQueue = m_device->getQueue(queueIndices.presentFamily.value(), 0);
     }
 
     void pickPhysicalDevice()
     {
-        auto devices = instance->enumeratePhysicalDevices();
+        auto devices = m_instance->enumeratePhysicalDevices();
         auto it = std::find_if(devices.cbegin(), devices.cend(), [&](const auto &device) { return isDeviceSuitable(device); });
         if (it == devices.cend()) {
             throw std::runtime_error("failed to find a suitable GPU!");
         }
 
-        physicalDevice = *it;
-        msaaSamples = getMaxUsableSampleCount();
+        m_physicalDevice = *it;
+        m_msaaSamples = getMaxUsableSampleCount();
     }
 
     vk::SampleCountFlagBits getMaxUsableSampleCount()
     {
-        auto limits = physicalDevice.getProperties().limits;
+        auto limits = m_physicalDevice.getProperties().limits;
         vk::SampleCountFlags counts = limits.framebufferColorSampleCounts & limits.framebufferDepthSampleCounts;
 
         if (counts & vk::SampleCountFlagBits::e64) {
@@ -1060,7 +1060,7 @@ class HelloVulkan
 
     SwapChainSupportDetails querySwapChainSupport(const vk::PhysicalDevice &device)
     {
-        return {device.getSurfaceCapabilitiesKHR(*surface), device.getSurfaceFormatsKHR(*surface), device.getSurfacePresentModesKHR(*surface)};
+        return {device.getSurfaceCapabilitiesKHR(*m_surface), device.getSurfaceFormatsKHR(*m_surface), device.getSurfacePresentModesKHR(*m_surface)};
     }
 
     bool checkDeviceExtensionSupport(const vk::PhysicalDevice &device)
@@ -1083,7 +1083,7 @@ class HelloVulkan
             }
 
             vk::Bool32 presentSupport = 0;
-            device.getSurfaceSupportKHR(i, *surface, &presentSupport);
+            device.getSurfaceSupportKHR(i, *m_surface, &presentSupport);
 
             if (queueFamily.queueCount > 0 && presentSupport != 0) {
                 queueIndices.presentFamily = i;
@@ -1100,24 +1100,24 @@ class HelloVulkan
     void createSurface()
     {
         VkSurfaceKHR surfaceTmp;
-        if (glfwCreateWindowSurface(*instance, window, nullptr, &surfaceTmp) != VK_SUCCESS) {
+        if (glfwCreateWindowSurface(*m_instance, m_window, nullptr, &surfaceTmp) != VK_SUCCESS) {
             throw std::runtime_error("failed to create window surface!");
         }
         // Set the instance as the allocator for the surface for correct order of destruction
-        surface = vk::UniqueSurfaceKHR(surfaceTmp, *instance);
+        m_surface = vk::UniqueSurfaceKHR(surfaceTmp, *m_instance);
     }
 
     void setupDebugMessenger()
     {
         if (enableValidationLayers) {
             // vk::DebugUtilsMessengerCreateInfoEXT(flags_, messageSeverity_, messageType_, pfnUserCallback_)
-            debugMessenger = instance->createDebugUtilsMessengerEXTUnique(
+            m_debugMessenger = m_instance->createDebugUtilsMessengerEXTUnique(
                 {{},
                  vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
                  vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
                  debugCallback},
                 nullptr,
-                dldy);
+                m_dldy);
         }
     }
 
@@ -1143,8 +1143,8 @@ class HelloVulkan
         auto extensions = getRequiredExtensions();
 
         // vk::InstanceCreateInfo(flags_, pApplicationInfo_, enabledLayerCount_, ppEnabledLayerNames_, enabledExtensionCount_, ppEnabledExtensionNames_)
-        instance = vk::createInstanceUnique({{}, &appInfo, enabledLayerCount, ppEnabledLayerNames, (uint32_t)extensions.size(), extensions.data()});
-        dldy.init(*instance);
+        m_instance = vk::createInstanceUnique({{}, &appInfo, enabledLayerCount, ppEnabledLayerNames, (uint32_t)extensions.size(), extensions.data()});
+        m_dldy.init(*m_instance);
     }
 
     bool checkValidationLayerSupport()
