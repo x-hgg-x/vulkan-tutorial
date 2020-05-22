@@ -98,15 +98,15 @@ struct SwapChainSupportDetails {
     std::vector<vk::PresentModeKHR> presentModes;
 };
 
-class HelloVulkan
+class VulkanApplication
 {
   public:
-    HelloVulkan()
+    VulkanApplication()
     {
         glfwInit();
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-        m_window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+        m_window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan Application", nullptr, nullptr);
         glfwSetWindowUserPointer(m_window, this);
         glfwSetFramebufferSizeCallback(m_window, framebufferResizeCallback);
     }
@@ -117,7 +117,7 @@ class HelloVulkan
         mainLoop();
     }
 
-    ~HelloVulkan()
+    ~VulkanApplication()
     {
         glfwDestroyWindow(m_window);
         glfwTerminate();
@@ -191,7 +191,7 @@ class HelloVulkan
 
     static void framebufferResizeCallback(GLFWwindow *window, int /*width*/, int /*height*/)
     {
-        reinterpret_cast<HelloVulkan *>(glfwGetWindowUserPointer(window))->m_framebufferResized = true;
+        reinterpret_cast<VulkanApplication *>(glfwGetWindowUserPointer(window))->m_framebufferResized = true;
     }
 
     void initVulkan()
@@ -1124,7 +1124,7 @@ class HelloVulkan
     void createInstance()
     {
         // vk::ApplicationInfo(pApplicationName_, applicationVersion_, pEngineName_, engineVersion_, apiVersion_)
-        auto appInfo = vk::ApplicationInfo("Hello Vulkan", VK_MAKE_VERSION(1, 0, 0), "No Engine", VK_MAKE_VERSION(1, 0, 0), VK_API_VERSION_1_1);
+        auto appInfo = vk::ApplicationInfo("Vulkan Application", VK_MAKE_VERSION(1, 0, 0), "No Engine", VK_MAKE_VERSION(1, 0, 0), VK_API_VERSION_1_1);
 
         if (enableValidationLayers && !checkValidationLayerSupport()) {
             throw std::runtime_error("validation layers requested, but not available!");
@@ -1179,7 +1179,7 @@ class HelloVulkan
 
 int main()
 {
-    HelloVulkan app;
+    VulkanApplication app;
 
     try {
         app.run();
