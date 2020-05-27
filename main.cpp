@@ -490,7 +490,7 @@ class VulkanApplication
 
     void createTextureImageView()
     {
-        m_textureImageView = createUniqueImageView(*m_textureImage, vk::Format::eR8G8B8A8Unorm, vk::ImageAspectFlagBits::eColor, m_mipLevels);
+        m_textureImageView = createUniqueImageView(*m_textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor, m_mipLevels);
     }
 
     void createTextureImage()
@@ -514,10 +514,10 @@ class VulkanApplication
         m_device->unmapMemory(*stagingBufferMemory);
         stbi_image_free(pixels);
 
-        createUniqueImage(texWidth, texHeight, m_mipLevels, vk::SampleCountFlagBits::e1, vk::Format::eR8G8B8A8Unorm, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, m_textureImage, m_textureImageMemory);
-        transitionImageLayout(*m_textureImage, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, m_mipLevels);
+        createUniqueImage(texWidth, texHeight, m_mipLevels, vk::SampleCountFlagBits::e1, vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, m_textureImage, m_textureImageMemory);
+        transitionImageLayout(*m_textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, m_mipLevels);
         copyBufferToImage(*stagingBuffer, *m_textureImage, texWidth, texHeight);
-        generateMipmaps(*m_textureImage, vk::Format::eR8G8B8A8Unorm, texWidth, texHeight, m_mipLevels);
+        generateMipmaps(*m_textureImage, vk::Format::eR8G8B8A8Srgb, texWidth, texHeight, m_mipLevels);
         // transitioned to vk::ImageLayout::eShaderReadOnlyOptimal while generating mipmaps
     }
 
@@ -948,12 +948,8 @@ class VulkanApplication
 
     vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats)
     {
-        if (availableFormats.size() == 1 && availableFormats[0].format == vk::Format::eUndefined) {
-            return {vk::Format::eB8G8R8A8Unorm, vk::ColorSpaceKHR::eSrgbNonlinear};
-        }
-
         auto it = std::find_if(availableFormats.cbegin(), availableFormats.cend(),
-                               [](const auto &format) { return format.format == vk::Format::eB8G8R8A8Unorm && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear; });
+                               [](const auto &format) { return format.format == vk::Format::eB8G8R8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear; });
 
         if (it != availableFormats.cend()) {
             return *it;
