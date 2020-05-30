@@ -307,7 +307,7 @@ class VulkanApplication
         UniformBufferObject ubo = {
             glm::rotate(glm::mat4(1), time * glm::radians(90.0f), glm::vec3(0, 0, 1)),
             glm::lookAt(glm::vec3(2, 2, 2.), glm::vec3(0, 0, 0), glm::vec3(0, 0, 1)),
-            glm::perspective(glm::radians(45.0f), m_swapChainExtent.width / (float)m_swapChainExtent.height, 0.1f, 10.0f)};
+            glm::perspective(glm::radians(45.0f), float(WIDTH) / float(HEIGHT), 0.1f, 10.0f)};
 
         ubo.proj[1][1] *= -1;
 
@@ -775,8 +775,23 @@ class VulkanApplication
         // vk::PipelineInputAssemblyStateCreateInfo(flags_, topology_, primitiveRestartEnable_)
         auto inputAssembly = vk::PipelineInputAssemblyStateCreateInfo({}, vk::PrimitiveTopology::eTriangleList, VK_FALSE);
 
+        // Set viewport (keep initial image ratio)
+        float ratio = float(WIDTH) / float(HEIGHT);
+        float width = m_swapChainExtent.width;
+        float height = m_swapChainExtent.height;
+
+        if (width / height > ratio) {
+            width = ratio * height;
+        } else {
+            height = width / ratio;
+        }
+
+        float offset_x = (m_swapChainExtent.width - width) / 2;
+        float offset_y = (m_swapChainExtent.height - height) / 2;
+
         // vk::Viewport(x_, y_, width_, height_, minDepth_, maxDepth_)
-        auto viewport = vk::Viewport(0, 0, m_swapChainExtent.width, m_swapChainExtent.height, 0, 1);
+        auto viewport = vk::Viewport(offset_x, offset_y, width, height, 0, 1);
+
         // vk::Rect2D(vk::Offset2D(x_, y_), extent_)
         auto scissor = vk::Rect2D({0, 0}, m_swapChainExtent);
         // vk::PipelineViewportStateCreateInfo(flags_, viewportCount_, pViewports_, scissorCount_, pScissors_)
