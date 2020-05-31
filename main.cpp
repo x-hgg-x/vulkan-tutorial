@@ -48,7 +48,6 @@ const bool enableValidationLayers = true;
 
 struct Vertex {
     glm::vec3 pos;
-    glm::vec3 color;
     glm::vec2 texCoord;
 
     static vk::VertexInputBindingDescription getBindingDescription()
@@ -61,13 +60,12 @@ struct Vertex {
     {
         // vk::VertexInputAttributeDescription(location_, binding_, format_, offset_)
         return {{0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, pos)},
-                {1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)},
-                {2, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord)}};
+                {1, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord)}};
     }
 
     bool operator==(const Vertex &other) const
     {
-        return pos == other.pos && color == other.color && texCoord == other.texCoord;
+        return pos == other.pos && texCoord == other.texCoord;
     }
 };
 
@@ -75,7 +73,7 @@ template <>
 struct std::hash<Vertex> {
     size_t operator()(Vertex const &vertex) const
     {
-        return ((std::hash<glm::vec3>()(vertex.pos) ^ (std::hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^ (std::hash<glm::vec2>()(vertex.texCoord) << 1);
+        return (std::hash<glm::vec3>()(vertex.pos) ^ (std::hash<glm::vec2>()(vertex.texCoord) << 1)) >> 1;
     }
 };
 
@@ -306,7 +304,7 @@ class VulkanApplication
 
         UniformBufferObject ubo = {
             glm::rotate(glm::mat4(1), time * glm::radians(90.0f), glm::vec3(0, 0, 1)),
-            glm::lookAt(glm::vec3(2, 2, 2.), glm::vec3(0, 0, 0), glm::vec3(0, 0, 1)),
+            glm::lookAt(glm::vec3(2, 2, 2), glm::vec3(0, 0, 0), glm::vec3(0, 0, 1)),
             glm::perspective(glm::radians(45.0f), float(WIDTH) / float(HEIGHT), 0.1f, 10.0f)};
 
         ubo.proj[1][1] *= -1;
@@ -741,7 +739,6 @@ class VulkanApplication
             for (const auto &index : shape.mesh.indices) {
                 Vertex vertex = {
                     glm::make_vec3(&attrib.vertices[3 * index.vertex_index]),
-                    {1, 1, 1},
                     glm::make_vec2(&attrib.texcoords[2 * index.texcoord_index])};
 
                 vertex.texCoord[1] = 1 - vertex.texCoord[1];
