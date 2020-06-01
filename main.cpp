@@ -247,14 +247,9 @@ class VulkanApplication
 
         createSwapChain();
         createImageViews();
-        createRenderPass();
-        createGraphicsPipeline();
         createColorResources();
         createDepthResources();
         createFramebuffers();
-        createUniformBuffers();
-        createDescriptorPool();
-        createDescriptorSets();
         createCommandBuffers();
     }
 
@@ -348,10 +343,33 @@ class VulkanApplication
             m_commandBuffers[i].bindVertexBuffers(0, *m_vertexBuffer, {0});
             m_commandBuffers[i].bindIndexBuffer(*m_indexBuffer, 0, vk::IndexType::eUint32);
             m_commandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *m_pipelineLayout, 0, m_descriptorSets[i], {});
+            setViewportScissor(m_commandBuffers[i]);
             m_commandBuffers[i].drawIndexed(m_indices.size(), 1, 0, 0, 0);
             m_commandBuffers[i].endRenderPass();
             m_commandBuffers[i].end();
         }
+    }
+
+    void setViewportScissor(vk::CommandBuffer commandBuffer)
+    {
+        // Keep initial image ratio
+        float ratio = float(WIDTH) / float(HEIGHT);
+        float width = m_swapChainExtent.width;
+        float height = m_swapChainExtent.height;
+
+        if (width / height > ratio) {
+            width = ratio * height;
+        } else {
+            height = width / ratio;
+        }
+
+        float offset_x = (m_swapChainExtent.width - width) / 2;
+        float offset_y = (m_swapChainExtent.height - height) / 2;
+
+        // vk::Viewport(x_, y_, width_, height_, minDepth_, maxDepth_)
+        commandBuffer.setViewport(0, {{offset_x, offset_y, width, height, 0, 1}});
+        // vk::Rect2D(vk::Offset2D(x_, y_), extent_)
+        commandBuffer.setScissor(0, {{{0, 0}, m_swapChainExtent}});
     }
 
     void createDescriptorSets()
@@ -772,26 +790,9 @@ class VulkanApplication
         // vk::PipelineInputAssemblyStateCreateInfo(flags_, topology_, primitiveRestartEnable_)
         auto inputAssembly = vk::PipelineInputAssemblyStateCreateInfo({}, vk::PrimitiveTopology::eTriangleList, VK_FALSE);
 
-        // Set viewport (keep initial image ratio)
-        float ratio = float(WIDTH) / float(HEIGHT);
-        float width = m_swapChainExtent.width;
-        float height = m_swapChainExtent.height;
-
-        if (width / height > ratio) {
-            width = ratio * height;
-        } else {
-            height = width / ratio;
-        }
-
-        float offset_x = (m_swapChainExtent.width - width) / 2;
-        float offset_y = (m_swapChainExtent.height - height) / 2;
-
-        // vk::Viewport(x_, y_, width_, height_, minDepth_, maxDepth_)
-        auto viewport = vk::Viewport(offset_x, offset_y, width, height, 0, 1);
-
-        // vk::Rect2D(vk::Offset2D(x_, y_), extent_)
-        auto scissor = vk::Rect2D({0, 0}, m_swapChainExtent);
-        // vk::PipelineViewportStateCreateInfo(flags_, viewportCount_, pViewports_, scissorCount_, pScissors_)
+        // Set dynamic viewport and scissor
+        auto viewport = vk::Viewport{};
+        auto scissor = vk::Rect2D{};
         auto viewportState = vk::PipelineViewportStateCreateInfo({}, 1, &viewport, 1, &scissor);
 
         // vk::PipelineRasterizationStateCreateInfo(flags_, depthClampEnable_, rasterizerDiscardEnable_, polygonMode_, cullMode_, frontFace_, depthBiasEnable_, depthBiasConstantFactor_, depthBiasClamp_, depthBiasSlopeFactor_, lineWidth_)
@@ -813,6 +814,10 @@ class VulkanApplication
         // vk::PipelineColorBlendStateCreateInfo(flags_, logicOpEnable_, logicOp_, attachmentCount_, pAttachments_, blendConstants_)
         auto colorBlending = vk::PipelineColorBlendStateCreateInfo({}, VK_FALSE, vk::LogicOp::eCopy, 1, &colorBlendAttachment, {0, 0, 0, 0});
 
+        // vk::PipelineDynamicStateCreateInfo(flags_, dynamicStateCount_, pDynamicStates_)
+        auto dynamicStates = std::vector<vk::DynamicState>{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+        auto dynamicStateInfo = vk ::PipelineDynamicStateCreateInfo({}, dynamicStates.size(), dynamicStates.data());
+
         // vk::PipelineLayoutCreateInfo(flags_, setLayoutCount_, pSetLayouts_, pushConstantRangeCount_, pPushConstantRanges_)
         m_pipelineLayout = m_device->createPipelineLayoutUnique({{}, 1, &*m_descriptorSetLayout, 0, nullptr});
 
@@ -830,7 +835,7 @@ class VulkanApplication
                 &multisampling,                // pMultisampleState_
                 &depthStencil,                 // pDepthStencilState_
                 &colorBlending,                // pColorBlendState_
-                nullptr,                       // pDynamicState_
+                &dynamicStateInfo,             // pDynamicState_
                 *m_pipelineLayout,             // layout_
                 *m_renderPass,                 // renderPass_
                 0,                             // subpass_
