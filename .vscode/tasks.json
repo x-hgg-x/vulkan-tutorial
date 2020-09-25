@@ -2,9 +2,9 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Build Project",
+            "label": "Build",
             "type": "shell",
-            "command": "mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make -j8",
+            "command": "mkdir -p build && cd build && cmake -G Ninja -DCMAKE_BUILD_TYPE=Release .. && ninja -v -j8",
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -12,9 +12,42 @@
             "problemMatcher": [
                 {
                     "base": "$gcc",
-                    "fileLocation": "autoDetect",
+                    "fileLocation": [
+                        "relative",
+                        "${workspaceFolder}/build"
+                    ],
                 }
             ]
+        },
+        {
+            "label": "Cppcheck",
+            "type": "process",
+            "command": "cppcheck",
+            "args": [
+                "--project=build/compile_commands.json",
+                "--template=gcc",
+                "--enable=all",
+                "--inline-suppr",
+                "--suppress=knownConditionTrueFalse",
+                "--suppress=*:*/stb_image.h",
+                "--suppress=missingIncludeSystem",
+                "--suppress=unmatchedSuppression:*"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "Clang-Tidy",
+            "type": "shell",
+            "command": "clang-tidy",
+            "args": [
+                "*.cpp",
+                "-p=build",
+                "-quiet",
+                "-checks='-clang-analyzer*,bugprone*,misc*,modernize*,performance*,readability*,-modernize-use-trailing-return-type,-readability-magic-numbers,-readability-uppercase-literal-suffix,-misc-non-private-member-variables-in-classes'"
+            ],
+            "group": "build",
+            "problemMatcher": "$gcc"
         }
     ]
 }

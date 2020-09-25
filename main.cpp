@@ -18,6 +18,7 @@
 #include "tiny_obj_loader.h"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <cstdlib>
@@ -87,7 +88,7 @@ struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
     std::optional<uint32_t> presentFamily;
 
-    bool isComplete() { return graphicsFamily.has_value() && presentFamily.has_value(); }
+    [[nodiscard]] bool isComplete() const { return graphicsFamily.has_value() && presentFamily.has_value(); }
 };
 
 struct SwapChainSupportDetails {
@@ -236,7 +237,8 @@ class VulkanApplication
 
     void recreateSwapChain()
     {
-        int width = 0, height = 0;
+        int width = 0;
+        int height = 0;
         while (width == 0 || height == 0) {
             glfwGetFramebufferSize(m_window, &width, &height);
             glfwWaitEvents();
@@ -304,7 +306,7 @@ class VulkanApplication
 
         ubo.proj[1][1] *= -1;
 
-        auto data = m_device->mapMemory(*m_uniformBuffersMemory[currentImage], 0, sizeof(ubo), {});
+        void *data = m_device->mapMemory(*m_uniformBuffersMemory[currentImage], 0, sizeof(ubo), {});
         memcpy(data, &ubo, sizeof(ubo));
         m_device->unmapMemory(*m_uniformBuffersMemory[currentImage]);
     }
@@ -412,7 +414,7 @@ class VulkanApplication
 
         createUniqueBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
 
-        auto data = m_device->mapMemory(*stagingBufferMemory, 0, bufferSize, {});
+        void *data = m_device->mapMemory(*stagingBufferMemory, 0, bufferSize, {});
         memcpy(data, m_vertices.data(), bufferSize);
         m_device->unmapMemory(*stagingBufferMemory);
 
@@ -428,7 +430,7 @@ class VulkanApplication
 
         createUniqueBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
 
-        auto data = m_device->mapMemory(*stagingBufferMemory, 0, bufferSize, {});
+        void *data = m_device->mapMemory(*stagingBufferMemory, 0, bufferSize, {});
         memcpy(data, m_indices.data(), bufferSize);
         m_device->unmapMemory(*stagingBufferMemory);
 
@@ -511,7 +513,9 @@ class VulkanApplication
 
     void createTextureImage()
     {
-        int texWidth, texHeight, texChannels;
+        int texWidth;
+        int texHeight;
+        int texChannels;
         stbi_uc *pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
         if (pixels == nullptr) {
             throw std::runtime_error("failed to load texture image!");
@@ -525,7 +529,7 @@ class VulkanApplication
 
         createUniqueBuffer(imageSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
 
-        auto data = m_device->mapMemory(*stagingBufferMemory, 0, imageSize, {});
+        void *data = m_device->mapMemory(*stagingBufferMemory, 0, imageSize, {});
         memcpy(data, pixels, imageSize);
         m_device->unmapMemory(*stagingBufferMemory);
         stbi_image_free(pixels);
@@ -746,7 +750,8 @@ class VulkanApplication
         tinyobj::attrib_t attrib;
         std::vector<tinyobj::shape_t> shapes;
         std::vector<tinyobj::material_t> materials;
-        std::string warn, err;
+        std::string warn;
+        std::string err;
 
         if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str())) {
             throw std::runtime_error(warn + err);
@@ -931,11 +936,11 @@ class VulkanApplication
 
         QueueFamilyIndices queueIndices = findQueueFamilies(m_physicalDevice);
 
-        uint32_t queueFamilyIndices[] = {queueIndices.graphicsFamily.value(), queueIndices.presentFamily.value()};
+        auto queueFamilyIndices = std::array<uint32_t, 2>{queueIndices.graphicsFamily.value(), queueIndices.presentFamily.value()};
         if (queueIndices.graphicsFamily != queueIndices.presentFamily) {
             imageSharingMode = vk::SharingMode::eConcurrent;
             queueFamilyIndexCount = 2;
-            pQueueFamilyIndices = queueFamilyIndices;
+            pQueueFamilyIndices = queueFamilyIndices.data();
         }
 
         m_swapChain = m_device->createSwapchainKHRUnique(
@@ -963,7 +968,7 @@ class VulkanApplication
         m_swapChainExtent = extent;
     }
 
-    vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats)
+    static vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats)
     {
         auto it = std::find_if(availableFormats.cbegin(), availableFormats.cend(),
                                [](const auto &format) { return format.format == vk::Format::eB8G8R8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear; });
@@ -974,7 +979,7 @@ class VulkanApplication
         return availableFormats[0];
     }
 
-    vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> &availablePresentModes)
+    static vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> &availablePresentModes)
     {
         vk::PresentModeKHR bestMode = vk::PresentModeKHR::eFifo;
         for (const auto &availablePresentMode : availablePresentModes) {
@@ -994,7 +999,8 @@ class VulkanApplication
             return capabilities.currentExtent;
         }
 
-        int width, height;
+        int width;
+        int height;
         glfwGetFramebufferSize(m_window, &width, &height);
 
         return {std::clamp((uint32_t)width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
@@ -1076,7 +1082,7 @@ class VulkanApplication
         return {device.getSurfaceCapabilitiesKHR(*m_surface), device.getSurfaceFormatsKHR(*m_surface), device.getSurfacePresentModesKHR(*m_surface)};
     }
 
-    bool checkDeviceExtensionSupport(const vk::PhysicalDevice &device)
+    static bool checkDeviceExtensionSupport(const vk::PhysicalDevice &device)
     {
         std::set<std::string> requiredExtensions(deviceExtensions.cbegin(), deviceExtensions.cend());
         for (const auto &extension : device.enumerateDeviceExtensionProperties()) {
@@ -1160,7 +1166,7 @@ class VulkanApplication
         m_dldy.init(*m_instance);
     }
 
-    bool checkValidationLayerSupport()
+    static bool checkValidationLayerSupport()
     {
         std::set<std::string> requiredLayers(validationLayers.cbegin(), validationLayers.cend());
         for (const auto &layerProperties : vk::enumerateInstanceLayerProperties()) {
@@ -1169,7 +1175,7 @@ class VulkanApplication
         return requiredLayers.empty();
     }
 
-    std::vector<const char *> getRequiredExtensions()
+    static std::vector<const char *> getRequiredExtensions()
     {
         uint32_t glfwExtensionCount = 0;
         const char **glfwExtensions;

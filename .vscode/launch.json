@@ -7,7 +7,7 @@
             "name": "Debug",
             "program": "${workspaceFolder}/build/vulkan-tutorial",
             "args": [],
-            "preLaunchTask": "Build Project",
+            "preLaunchTask": "Build",
             "cwd": "${workspaceFolder}"
         }
     ]
