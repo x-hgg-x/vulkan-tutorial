@@ -33,8 +33,8 @@
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
-const std::string MODEL_PATH = "models/chalet.obj";
-const std::string TEXTURE_PATH = "textures/chalet.jpg";
+const std::string MODEL_PATH = "assets/lfs/models/chalet.obj";
+const std::string TEXTURE_PATH = "assets/lfs/textures/chalet.jpg";
 
 const int MAX_FRAMES_IN_FLIGHT = 3;
 
@@ -778,8 +778,8 @@ class VulkanApplication
 
     void createGraphicsPipeline()
     {
-        vk::UniqueShaderModule vertShaderModule = createShaderModule("shaders/shader.vert.spv");
-        vk::UniqueShaderModule fragShaderModule = createShaderModule("shaders/shader.frag.spv");
+        vk::UniqueShaderModule vertShaderModule = createShaderModule("assets/shaders/shader.vert.spv");
+        vk::UniqueShaderModule fragShaderModule = createShaderModule("assets/shaders/shader.frag.spv");
 
         // vk::PipelineShaderStageCreateInfo(flags_, stage_, module_, pName_, pSpecializationInfo_)
         std::vector<vk::PipelineShaderStageCreateInfo> shaderStages = {

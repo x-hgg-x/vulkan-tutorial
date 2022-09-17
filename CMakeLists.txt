@@ -14,10 +14,7 @@ find_package(Vulkan REQUIRED)
 
 set(SOURCES main.cpp)
 
-execute_process(
-  COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_SOURCE_DIR}/shaders" "${CMAKE_BINARY_DIR}/shaders"
-  COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_SOURCE_DIR}/textures" "${CMAKE_BINARY_DIR}/textures"
-  COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_SOURCE_DIR}/models" "${CMAKE_BINARY_DIR}/models")
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_SOURCE_DIR}/assets" "${CMAKE_BINARY_DIR}/assets")
 
 add_executable(vulkan-tutorial ${SOURCES})
 target_link_libraries(vulkan-tutorial glfw Vulkan::Vulkan)
